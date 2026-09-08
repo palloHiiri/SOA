@@ -1,0 +1,353 @@
+openapi: '3.0.3'
+info:
+  title: Tiket Service API
+  version: '1.0'
+# servers:
+#   - url: https://api.server.test/v1
+components:
+  schemas:
+    Ticket:
+      required:
+        - id
+        - name
+        - coordinates
+        - creationDate
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+          readOnly: true
+
+        name:
+          type: string
+          minLength: 1
+
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+
+        creationDate:
+          type: string
+          format: date
+          readOnly: true
+
+        price:
+          type: number
+          format: double 
+          minimum: 0
+          exclusiveMinimum: true
+
+        discount:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 100
+
+        refundable:
+          type: boolean
+
+        type:
+          type: string
+          enum: [VIP, USUAL, CHEAP]
+        venue:
+          $ref: '#/components/schemas/Venue'
+
+    Coordinates:
+      type: object
+      required:
+        - x
+        - y
+      properties:
+        x:
+          type: integer
+        y:
+
+          type: number
+          format: float
+          minimum: -341
+          exclusiveMinimum: true
+
+    Venue:
+      required:
+        - id
+        - name
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          minimum: 1
+
+        name:
+          type: string
+          minLength: 1
+
+        capacity:
+          type: integer  
+          minimum: 1
+  
+paths:
+  /tickets:
+    get:
+      description: 'Получить список всех билетов'
+      parameters:
+        - name: page
+          in: query
+          description: Номер страницы 
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+
+        - name: size
+          in: query
+          description: Количество билетов на странице 
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+        
+        - name: sort
+          in: query
+          description: Поле для сортировки
+          required: false
+          schema:
+            type: string
+        
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+
+        - name: creationDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+
+        - name: price
+          in: query
+          required: false
+          schema:
+            type: number
+            format: double
+
+        - name: discount
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+
+        - name: refundable
+          in: query
+          required: false
+          schema:
+            type: boolean
+
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [VIP, USUAL, CHEAP]
+        
+        - name: coordinates.x
+          in: query
+          required: false
+          schema:
+            type: integer
+
+        - name: coordinates.y
+          in: query
+          required: false
+          schema:
+            type: number
+            format: float
+
+        - name: venue.id
+          in: query
+          required: false
+          schema:
+            type: integer
+
+        - name: venue.name
+          in: query
+          required: false
+          schema:
+            type: string
+
+        - name: venue.capacity
+          in: query
+          required: false
+          schema:
+            type: integer
+        
+
+            
+      responses:
+        '200':
+          description: Список билетов успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ticket'
+        '404':
+          description: Билеты не найдены
+
+    post:
+      description: 'Добавить новый билет'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+
+      responses:
+        '201':
+          description: Билет успешно добавлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '400':
+          description: Переданы некорректные данные
+
+  /tickets/{id}:
+    get:
+      description: 'Получить билет по id'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Билет найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '400':
+          description: Некорректный id
+        '404':
+          description: Билет не найден
+    
+    put:
+      description: 'Обновить билет по id'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Ticket'
+      responses:
+        '200':
+          description: Билет успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '400':
+          description: Переданы некорректные данные
+        '404':
+          description: Билет не найден
+    delete:
+      description: 'Удалить билет по id'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '204':
+          description: Билет успешно удален
+        '400':
+          description: Некорректный id
+        '404':
+          description: Билет не найден
+
+  /tickets/discount/average:
+    get:
+      description: 'Рассчитать среднее значение discount для всех билетов'
+      responses:
+        '200':
+          description: Среднее значение discount рассчитано
+          content:
+            application/json:
+              schema:
+                type: number
+                format: double
+        '404':
+          description: Коллекция билетов пуста
+  
+  /tickets/max-creation-date:
+    get:
+      description: 'Вернуть билет с максимальным значением creationDate'
+      responses:
+        '200':
+          description: Билет найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+
+        '404':
+          description: Коллекция билетов пуста
+  
+  /tickets/discount/less-than/{discount}:
+    get:
+      description: 'Вернуть билеты, у которых discount меньше заданного значения'
+
+      parameters:
+        - name: discount
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+
+      responses:
+        '200':
+          description: Билеты найдены
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Ticket'
+
+        '400':
+          description: Некорректное значение discount
+        '404':
+          description: Билеты не найдены

@@ -1,0 +1,172 @@
+openapi: '3.0.3'
+info:
+  title: Booking Service API
+  version: '1.0'
+# servers:
+#   - url: https://api.server.test/v1
+components:
+  schemas:
+    Ticket:
+      required:
+        - id
+        - name
+        - coordinates
+        - creationDate
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+          readOnly: true
+
+        name:
+          type: string
+          minLength: 1
+
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+
+        creationDate:
+          type: string
+          format: date
+          readOnly: true
+
+        price:
+          type: number
+          format: double 
+          minimum: 0
+          exclusiveMinimum: true
+
+        discount:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 100
+
+        refundable:
+          type: boolean
+
+        type:
+          type: string
+          enum: [VIP, USUAL, CHEAP]
+        venue:
+          $ref: '#/components/schemas/Venue'
+
+    Coordinates:
+      type: object
+      required:
+        - x
+        - y
+      properties:
+        x:
+          type: integer
+        y:
+
+          type: number
+          format: float
+          minimum: -341
+          exclusiveMinimum: true
+
+    Venue:
+      required:
+        - id
+        - name
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+          minimum: 1
+
+        name:
+          type: string
+          minLength: 1
+
+        capacity:
+          type: integer  
+          minimum: 1
+  
+paths:
+  /booking/sell/{ticketId}/{personId}/{price}:
+    post:
+      description: 'Продать билет указанному человеку за заданную сумму'
+
+      parameters:
+        - name: ticketId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+
+        - name: personId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+
+        - name: price
+          in: path
+          required: true
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            exclusiveMinimum: true
+
+      responses:
+        '200':
+          description: Билет успешно продан
+
+        '400':
+          description: Переданы некорректные параметры
+
+        '404':
+          description: Билет не найден
+      
+  /booking/sell/discount/{ticketId}/{personId}/{discount}:
+    post:
+      description: 'Создать новый билет на основе указанного, установить заданную скидку и увеличить цену на тот же процент'
+
+      parameters:
+        - name: ticketId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+
+        - name: personId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+
+        - name: discount
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+
+      responses:
+        '201':
+          description: Новый билет успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+
+        '400':
+          description: Переданы некорректные параметры
+
+        '404':
+          description: Исходный билет не найден
