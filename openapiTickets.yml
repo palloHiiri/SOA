@@ -51,7 +51,13 @@ components:
           type: string
           enum: [VIP, USUAL, CHEAP]
         venue:
-          $ref: '#/components/schemas/Venue'
+          description: 
+            Место проведения, может быть как новым, так и существующим. 
+            Если передан объект с полями name и capacity, то будет создано новое место проведения.
+            Если передан объект с полем id, то будет использовано существующее место проведения с этим id.
+          oneOf:
+            - $ref: '#/components/schemas/Venue'
+            - $ref: '#/components/schemas/ExistingVenue'
 
     Coordinates:
       type: object
@@ -87,7 +93,150 @@ components:
           type: integer  
           minimum: 1
   
+    ExistingVenue:
+        required:
+          - id
+        type: object
+        properties:
+          id:
+            type: integer
+            minimum: 1
+
 paths:
+  /venues:
+    get:
+      description: 'Получить список всех мест'
+      parameters:
+        - name: page
+          in: query
+          description: Номер страницы 
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+
+        - name: size
+          in: query
+          description: Количество мест на странице 
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+        
+        - name: sort
+          in: query
+          description: Поле для сортировки
+          required: false
+          schema:
+            type: string
+        
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: integer
+
+        - name: name
+          in: query
+          required: false
+          schema:
+            type: string
+
+        - name: capacity
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Список мест успешно получен
+          content:
+            application/json:
+              schema:
+                type: array 
+                items:
+                  $ref: '#/components/schemas/Venue'
+        '404':
+          description: Места не найдены
+    post:
+      description: 'Добавить новое место'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Venue'
+      responses:
+        '201':
+          description: Место успешно добавлено
+          content:
+            application/json:
+              schema: 
+                $ref: '#/components/schemas/Venue'
+        '400':
+          description: Переданы некорректные данные
+
+  /venues/{id}:
+    get:
+      description: 'Получить место по id'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Место найдено 
+    delete:
+      description: 'Удалить место по id'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '204':
+          description: Место успешно удалено
+        '400':
+          description: Некорректный id
+        '404':
+          description: Место не найдено
+    put:
+      description: 'Обновить место по id'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Venue'
+      responses:
+        '200':
+          description: Место успешно обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venue'
+        '400':
+          description: Переданы некорректные данные
+        '404':
+          description: Место не найдено
+
   /tickets:
     get:
       description: 'Получить список всех билетов'
