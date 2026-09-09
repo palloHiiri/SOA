@@ -2,8 +2,8 @@ openapi: '3.0.3'
 info:
   title: Tiket Service API
   version: '1.0'
-# servers:
-#   - url: https://api.server.test/v1
+servers:
+  - url: http://157.22.189.188:8085
 components:
   schemas:
     Ticket:
@@ -102,64 +102,150 @@ components:
             type: integer
             minimum: 1
 
+    TicketSearchRequest:
+      type: object
+      properties:
+
+        page:
+          type: integer
+          minimum: 1
+
+        size:
+          type: integer
+          minimum: 1
+
+        sort:
+          type: string
+
+        id:
+          type: integer
+          format: int64
+
+        name:
+          type: string
+
+        creationDate:
+          type: string
+          format: date
+
+        price:
+          type: number
+          format: double
+
+        discount:
+          type: integer
+          format: int64
+
+        refundable:
+          type: boolean
+
+        type:
+          type: string
+          enum: [VIP, USUAL, CHEAP]
+
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+
+        venue:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            capacity:
+              type: integer
+    
+    VenueSearchRequest:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+
+        size:
+          type: integer
+          minimum: 1
+
+        sort:
+          type: string
+
+        id:
+          type: integer
+          format: int64
+
+        name:
+          type: string
+
+        capacity:
+          type: integer
+
+    TicketPageResponse:
+      type: object
+      properties:
+
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ticket'
+
+        page:
+          type: integer
+          minimum: 1
+
+        size:
+          type: integer
+          minimum: 1
+
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+
+        totalPages:
+          type: integer
+          minimum: 0
+
+        hasNext:
+          type: boolean
+
+        hasPrevious:
+          type: boolean
+
+    VenuePageResponse:
+      type: object
+      properties:
+
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Venue'
+
+        page:
+          type: integer
+          minimum: 1
+
+        size:
+          type: integer
+          minimum: 1
+
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+
+        totalPages:
+          type: integer
+          minimum: 0
+
+        hasNext:
+          type: boolean
+
+        hasPrevious:
+          type: boolean
+
 paths:
   /venues:
-    get:
-      description: 'Получить список всех мест'
-      parameters:
-        - name: page
-          in: query
-          description: Номер страницы 
-          required: false
-          schema:
-            type: integer
-            format: int32
-            minimum: 1
-
-        - name: size
-          in: query
-          description: Количество мест на странице 
-          required: false
-          schema:
-            type: integer
-            format: int32
-            minimum: 1
-        
-        - name: sort
-          in: query
-          description: Поле для сортировки
-          required: false
-          schema:
-            type: string
-        
-        - name: id
-          in: query
-          required: false
-          schema:
-            type: integer
-
-        - name: name
-          in: query
-          required: false
-          schema:
-            type: string
-
-        - name: capacity
-          in: query
-          required: false
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Список мест успешно получен
-          content:
-            application/json:
-              schema:
-                type: array 
-                items:
-                  $ref: '#/components/schemas/Venue'
-        '404':
-          description: Места не найдены
     post:
       description: 'Добавить новое место'
       requestBody:
@@ -177,7 +263,26 @@ paths:
                 $ref: '#/components/schemas/Venue'
         '400':
           description: Переданы некорректные данные
-
+        '409':
+          description: Место с таким name уже существует
+  /venues/search:
+    post:
+      description: 'Поиск, фильтрация, сортировка и постраничный вывод мест проведения'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VenueSearchRequest'
+      responses:
+        '200':
+          description: Результаты поиска получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VenuePageResponse'
+        '400':
+          description: Переданы некорректные параметры поиска
   /venues/{id}:
     get:
       description: 'Получить место по id'
@@ -192,6 +297,10 @@ paths:
       responses:
         '200':
           description: Место найдено 
+        '400':
+          description: Некорректный id
+        '404':
+          description: Место не найдено
     delete:
       description: 'Удалить место по id'
       parameters:
@@ -236,128 +345,7 @@ paths:
           description: Переданы некорректные данные
         '404':
           description: Место не найдено
-
   /tickets:
-    get:
-      description: 'Получить список всех билетов'
-      parameters:
-        - name: page
-          in: query
-          description: Номер страницы 
-          required: false
-          schema:
-            type: integer
-            format: int32
-            minimum: 1
-
-        - name: size
-          in: query
-          description: Количество билетов на странице 
-          required: false
-          schema:
-            type: integer
-            format: int32
-            minimum: 1
-        
-        - name: sort
-          in: query
-          description: Поле для сортировки
-          required: false
-          schema:
-            type: string
-        
-        - name: id
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
-
-        - name: name
-          in: query
-          required: false
-          schema:
-            type: string
-
-        - name: creationDate
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date
-
-        - name: price
-          in: query
-          required: false
-          schema:
-            type: number
-            format: double
-
-        - name: discount
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
-
-        - name: refundable
-          in: query
-          required: false
-          schema:
-            type: boolean
-
-        - name: type
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [VIP, USUAL, CHEAP]
-        
-        - name: coordinates.x
-          in: query
-          required: false
-          schema:
-            type: integer
-
-        - name: coordinates.y
-          in: query
-          required: false
-          schema:
-            type: number
-            format: float
-
-        - name: venue.id
-          in: query
-          required: false
-          schema:
-            type: integer
-
-        - name: venue.name
-          in: query
-          required: false
-          schema:
-            type: string
-
-        - name: venue.capacity
-          in: query
-          required: false
-          schema:
-            type: integer
-        
-
-            
-      responses:
-        '200':
-          description: Список билетов успешно получен
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Ticket'
-        '404':
-          description: Билеты не найдены
-
     post:
       description: 'Добавить новый билет'
       requestBody:
@@ -366,7 +354,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Ticket'
-
       responses:
         '201':
           description: Билет успешно добавлен
@@ -459,7 +446,7 @@ paths:
         '404':
           description: Коллекция билетов пуста
   
-  /tickets/max-creation-date:
+  /tickets/latest:
     get:
       description: 'Вернуть билет с максимальным значением creationDate'
       responses:
@@ -472,8 +459,29 @@ paths:
 
         '404':
           description: Коллекция билетов пуста
-  
-  /tickets/discount/less-than/{discount}:
+
+  /tickets/search:
+    post:
+      description: 'Поиск, фильтрация, сортировка и постраничный вывод билетов'
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketSearchRequest'
+
+      responses:
+        '200':
+          description: Результаты поиска получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketPageResponse'
+
+        '400':
+          description: Переданы некорректные параметры поиска
+  /tickets/discount-below/{discount}:
     get:
       description: 'Вернуть билеты, у которых discount меньше заданного значения'
 

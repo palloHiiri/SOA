@@ -2,8 +2,8 @@ openapi: '3.0.3'
 info:
   title: Booking Service API
   version: '1.0'
-# servers:
-#   - url: https://api.server.test/v1
+servers:
+  - url: http://157.22.189.188:8085
 components:
   schemas:
     Ticket:
@@ -104,7 +104,7 @@ components:
 
   
 paths:
-  /booking/sell/{ticketId}/{personId}/{price}:
+  /booking/sell-ticket/{ticketId}/{personId}/{price}:
     post:
       description: 'Продать билет указанному человеку за заданную сумму'
 
@@ -144,7 +144,7 @@ paths:
         '404':
           description: Билет не найден
       
-  /booking/sell/discount/{ticketId}/{personId}/{discount}:
+  /booking/create-ticket-with-special-discount/{ticketId}/{personId}/{discount}:
     post:
       description: 'Создать новый билет на основе указанного, установить заданную скидку и увеличить цену на тот же процент'
 
