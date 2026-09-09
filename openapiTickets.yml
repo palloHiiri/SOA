@@ -481,7 +481,7 @@ paths:
 
         '400':
           description: Переданы некорректные параметры поиска
-  /tickets/ticket-with-discount-below/{discount}:
+  /tickets/by-discount-below/{discount}:
     get:
       description: 'Вернуть билеты, у которых discount меньше заданного значения'
 
