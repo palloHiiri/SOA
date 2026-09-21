@@ -22,3 +22,33 @@ export interface Ticket {
     type?: TicketType;
     venue?: Venue;
 }
+
+export interface TicketResponse {
+    content: Ticket[];
+    page: number;
+    size: number;
+    totalElements: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+}
+
+export interface TicketRequest {
+    page: number;
+    size: number;
+    sort?: string;
+    
+    id?: number;
+    name?: string;
+    creationDate?: string;
+    price?: number;
+    discount?: number;
+    refundable?: boolean;
+    type?: TicketType;
+    coordinates?: Partial<Coordinates>;
+    venue?: {
+        id?: number;
+        name?: string;
+        capacity?: number;
+    }
+}

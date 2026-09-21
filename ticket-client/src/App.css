@@ -1,9 +1,185 @@
-#root {
-  min-height: 100vh;
+:root {
+  --ice: #C6E2FF;
+  --snow: #F4F8FA;
+  --cobalt: #1E3F66;
+  --rock: #708090;
+  --parade-white: #FAFAFA;
+  --crimson: #990011;
+  --anthracite: #2A2E33;
+  --gold: #D4AF37;
+  --copper: #B87333;
+  --iron: #4A4A4A;
+  --ochre: #DAA520;
+  --wood: #8B5A2B;
 }
 
 body {
   margin: 0;
-  background-color: #63030c;
+  min-width: 320px;
+  background:
+    linear-gradient(135deg, rgba(198, 226, 255, 0.72), transparent 42%),
+    linear-gradient(315deg, rgba(218, 165, 32, 0.14), transparent 38%),
+    var(--snow);
+  font-family:
+    Georgia,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: var(--anthracite);
+}
 
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 48px clamp(20px, 5vw, 72px);
+}
+
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+
+  margin-bottom: 28px;
+}
+
+.header h1 {
+  margin: 0;
+  color: var(--cobalt);
+  font-size: clamp(30px, 4vw, 44px);
+  letter-spacing: 0.02em;
+}
+
+.header p {
+  margin: 6px 0 0;
+  color: var(--rock);
+}
+
+.add-ticket-button {
+  border: none;
+  border-radius: 4px;
+  padding: 12px 20px;
+  background: var(--crimson);
+  box-shadow: 4px 4px 0 var(--copper);
+  color: var(--parade-white);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.add-ticket-button:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--copper);
+}
+
+.ticket-wrapper {
+  overflow-x: auto;
+  background: var(--parade-white);
+  border: 2px solid var(--cobalt);
+  border-radius: 4px;
+  box-shadow: 9px 9px 0 rgba(42, 46, 51, 0.18);
+}
+
+
+.ticket-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1000px;
+}
+
+.ticket-table th,
+.ticket-table td {
+  padding: 15px 18px;
+
+  text-align: left;
+  vertical-align: middle;
+
+  border-bottom: 1px solid var(--ice);
+}
+
+
+.ticket-table th {
+  background: var(--anthracite);
+  color: var(--ice);
+  font-size: 12px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+
+.ticket-table tbody tr {
+  transition: background 0.15s ease;
+}
+
+.ticket-table tbody tr:hover {
+  background: rgba(198, 226, 255, 0.35);
+}
+
+.ticket-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+
+
+.ticket-name {
+  font-weight: 600;
+}
+
+
+.secondary-text {
+  margin-top: 3px;
+
+  color: var(--rock);
+  font-size: 12px;
+}
+
+.venue-details {
+  display: grid;
+  gap: 3px;
+  min-width: 150px;
+}
+
+.venue-details strong {
+  color: var(--cobalt);
+}
+
+.venue-details span {
+  color: var(--iron);
+  font-size: 12px;
+}
+
+
+.message {
+  margin: 50px auto;
+
+  text-align: center;
+
+  color: var(--rock);
+  font-size: 18px;
+}
+
+.message.error {
+  color: var(--crimson);
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 28px 16px;
+  }
+
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ticket-table th,
+  .ticket-table td {
+    padding: 12px 14px;
+  }
 }

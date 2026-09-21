@@ -25,21 +25,21 @@ function App() {
   }, []);
 
   if(loading){
-    return <p>Loading...</p>
+    return <p className="message">Loading...</p>
   }
 
   if(error){
-    return <p>(error)</p>
+    return <p className="message error">{error}</p>
   }
 
   return (
     <main className = "container">
       <div className='header'>
         <div>
-          <h1>Ticket List</h1>
+          <h1>Snezhnaya Railway List</h1>
           <p>Tickets management</p>
         </div>
-        <button className='add-ticket-button'>Add Ticket</button>
+        <button className='add-ticket-button' type="button">Add Ticket</button>
       </div>
       {tickets.length === 0 ? (
         <p>No tickets available.</p>
@@ -70,7 +70,15 @@ function App() {
                   <td>{ticket.discount}</td>
                   <td>{ticket.refundable ? "Yes" : "No"}</td>
                   <td>{ticket.type}</td>
-                  <td>{ticket.venue ? ticket.venue.name : "N/A"}</td>
+                  <td>
+                    {ticket.venue ? (
+                      <div className="venue-details">
+                        <strong>{ticket.venue.name}</strong>
+                        <span>ID: {ticket.venue.id ?? "N/A"}</span>
+                        <span>Capacity: {ticket.venue.capacity}</span>
+                      </div>
+                    ) : "N/A"}
+                  </td>
                 </tr>
               ))}
             </tbody>
