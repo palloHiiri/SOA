@@ -1,0 +1,40 @@
+- id: clients-service-client-api-options
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/clients-srv/client(?:/.*)?>
+    methods:
+      - OPTIONS
+  authenticators:
+    - handler: anonymous
+      config:
+        subject: guest
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+- id: clients-service-client-api
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/clients-srv/client(?:/.*)?>
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: remote_json
+    config:
+      payload: |
+          {
+            "namespace": "Service",
+            "object": "clients-service",
+            "relation": "access",
+            "subject_id": "{{ print .Subject }}"
+          }
+  mutators:
+    - handler: header

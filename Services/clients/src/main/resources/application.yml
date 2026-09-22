@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: clients
+  r2dbc:
+    url: ${SPRING_R2DBC_URL:r2dbc:postgresql://localhost:5433/clients}
+    username: ${SPRING_R2DBC_USERNAME:postgres}
+    password: ${SPRING_R2DBC_PASSWORD:postgres}
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    consumer:
+      group-id: ${KAFKA_CLIENT_GROUP_ID:clients}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+      missing-topics-fatal: true
+      type: single
+
+kafka:
+  listener:
+    concurrency: ${KAFKA_LISTENER_CONCURRENCY:1}
+  topics:
+    user-registration: ${KAFKA_USER_REGISTRATION_TOPIC:sso.ident.user_registration.clients}
+    user-updates: ${KAFKA_USER_UPDATES_TOPIC:sso.ident.user_updates.clients}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    root: ${LOGGING_LEVEL_ROOT:INFO}

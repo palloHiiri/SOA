@@ -1,0 +1,1337 @@
+openapi: 3.0.3
+info:
+  title: Tickets Service API
+  version: '1.0'
+  description: |
+    Railway ticket service implemented as a JAX-RS application deployed as a WAR to WildFly.
+
+    The service owns tickets, temporary departure venues and price histories. Inventory
+    train-set data is consumed from the Redpanda CDC topic and stored as JSONB snapshots;
+    train sets, train-set carriages and seats are read-only projections of those snapshots.
+
+servers:
+  - url: http://localhost:4455/api/v1/tickets
+    description: Oathkeeper gateway
+  - url: http://localhost:8074/api/v1/tickets
+    description: Direct WildFly application endpoint (Docker Compose host port)
+
+tags:
+  - name: Tickets
+  - name: Venues
+  - name: Price histories
+  - name: Inventory projection
+
+paths:
+  /tickets:
+    get:
+      tags: [Tickets]
+      summary: List tickets
+      description: |
+        Returns a paginated collection of tickets. Current base price and discount are
+        obtained from the latest price-history record for each ticket.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+        - name: id
+          in: query
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: name
+          in: query
+          description: Exact ticket-name filter.
+          schema:
+            type: string
+        - name: creationDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: venueId
+          in: query
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: trainSetId
+          in: query
+          description: Inventory train-set ID associated with the ticket's Venue.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+        - name: carriageNumber
+          in: query
+          schema:
+            type: string
+            maxLength: 16
+        - name: seatNumber
+          in: query
+          schema:
+            type: string
+            maxLength: 3
+        - name: refundable
+          in: query
+          schema:
+            type: boolean
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/TicketType'
+        - name: basePrice
+          in: query
+          description: Exact current base price from the latest price history.
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            exclusiveMinimum: true
+        - name: discount
+          in: query
+          description: Exact current discount from the latest price history.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Tickets returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketPageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Tickets]
+      summary: Create ticket
+      description: |
+        Creates a ticket for a concrete Venue and seat. The selected carriage/seat must
+        exist in the latest available Inventory snapshot for the Venue's train_set_id.
+        If name is omitted, it is generated as:
+        "Билет: {seat_number}, вагон: {carriage_number} рейс: {venue_name}".
+        Creation and the initial price-history row are performed as one database transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketCreateRequest'
+      responses:
+        '201':
+          description: Ticket created successfully.
+          headers:
+            Location:
+              description: URL of the created ticket.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: Venue or required Inventory snapshot was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The seat is already occupied for this Venue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tickets/{id}:
+    get:
+      tags: [Tickets]
+      summary: Get ticket by ID
+      parameters:
+        - $ref: '#/components/parameters/TicketId'
+      responses:
+        '200':
+          description: Ticket found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Tickets]
+      summary: Update ticket
+      description: |
+        Updates ticket-owned fields. Price and discount are not changed here; use POST
+        /price-histories to append a new price state. If the Venue or seat is changed,
+        the new seat is validated against the selected Venue's latest Inventory snapshot.
+      parameters:
+        - $ref: '#/components/parameters/TicketId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketUpdateRequest'
+      responses:
+        '200':
+          description: Ticket updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The requested seat is already occupied for the selected Venue.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Tickets]
+      summary: Delete ticket
+      parameters:
+        - $ref: '#/components/parameters/TicketId'
+      responses:
+        '204':
+          description: Ticket deleted successfully. Its price history is deleted by cascade.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tickets/latest:
+    get:
+      tags: [Tickets]
+      summary: Get a ticket with the maximum creation date
+      description: Returns any ticket whose creationDate equals the maximum creationDate in the collection.
+      responses:
+        '200':
+          description: Latest ticket found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '404':
+          description: Ticket collection is empty.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tickets/discount/average:
+    get:
+      tags: [Tickets]
+      summary: Calculate average current discount
+      description: Calculates the average discount using the latest price-history row of every ticket.
+      responses:
+        '200':
+          description: Average discount calculated.
+          content:
+            application/json:
+              schema:
+                type: number
+                format: double
+        '404':
+          description: Ticket collection is empty.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tickets/by-discount-below/{discount}:
+    get:
+      tags: [Tickets]
+      summary: List tickets below a discount threshold
+      description: Returns tickets whose current discount is strictly less than the supplied value.
+      parameters:
+        - name: discount
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+        - name: venueId
+          in: query
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: trainSetId
+          in: query
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+        - name: carriageNumber
+          in: query
+          schema:
+            type: string
+            maxLength: 16
+        - name: seatNumber
+          in: query
+          schema:
+            type: string
+            maxLength: 3
+        - name: refundable
+          in: query
+          schema:
+            type: boolean
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/TicketType'
+      responses:
+        '200':
+          description: Matching tickets returned as a paginated collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketPageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /venues:
+    get:
+      tags: [Venues]
+      summary: List venues
+      description: Returns a paginated collection of temporary local departure/run instances.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+        - name: id
+          in: query
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: trainSetId
+          in: query
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        '200':
+          description: Venues returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VenuePageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Venues]
+      summary: Create Venue
+      description: Creates a temporary local representation of a concrete departure/run.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VenueCreateRequest'
+      responses:
+        '201':
+          description: Venue created successfully.
+          headers:
+            Location:
+              description: URL of the created Venue.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: The requested Inventory train-set snapshot is not available.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: A Venue with the same name already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /venues/{id}:
+    get:
+      tags: [Venues]
+      summary: Get Venue by ID
+      parameters:
+        - $ref: '#/components/parameters/VenueId'
+      responses:
+        '200':
+          description: Venue found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Venues]
+      summary: Update Venue
+      description: |
+        Updates Venue-owned fields. trainSetId may be changed only while the Venue has no tickets.
+      parameters:
+        - $ref: '#/components/parameters/VenueId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VenueUpdateRequest'
+      responses:
+        '200':
+          description: Venue updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venue'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Name conflict or Venue has tickets and an attempted trainSetId change is forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Venues]
+      summary: Delete Venue
+      parameters:
+        - $ref: '#/components/parameters/VenueId'
+      responses:
+        '204':
+          description: Venue deleted successfully.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Venue has tickets and cannot be deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /price-histories:
+    get:
+      tags: [Price histories]
+      summary: List price-history records
+      description: Returns all historical price states with pagination, sorting and filtering.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+        - name: id
+          in: query
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: ticketId
+          in: query
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+        - name: changedDateFrom
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: changedDateTo
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: basePrice
+          in: query
+          schema:
+            type: number
+            format: double
+            minimum: 0
+            exclusiveMinimum: true
+        - name: discount
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Price-history records returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceHistoryPageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags: [Price histories]
+      summary: Append a price-history record
+      description: Adds a new current price/discount state for an existing ticket. The history is append-only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceHistoryCreateRequest'
+      responses:
+        '201':
+          description: Price-history record created successfully.
+          headers:
+            Location:
+              description: URL of the created history record.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceHistory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /price-histories/{id}:
+    get:
+      tags: [Price histories]
+      summary: Get price-history record by ID
+      parameters:
+        - $ref: '#/components/parameters/PriceHistoryId'
+      responses:
+        '200':
+          description: Price-history record found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceHistory'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /train-sets:
+    get:
+      tags: [Inventory projection]
+      summary: List train-set projections
+      description: |
+        Returns the latest available snapshot for each Inventory train_set_id. No relational
+        train_sets table is maintained in Tickets; data is projected from train_set_cdc.data JSONB.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Sort'
+        - name: id
+          in: query
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: name
+          in: query
+          schema:
+            type: string
+        - name: buildNumber
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: technicalName
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Train-set projections returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainSetPageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /train-sets/{trainSetId}:
+    get:
+      tags: [Inventory projection]
+      summary: Get train-set projection
+      parameters:
+        - $ref: '#/components/parameters/TrainSetId'
+      responses:
+        '200':
+          description: Train-set projection found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainSet'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /train-sets/{trainSetId}/carriages:
+    get:
+      tags: [Inventory projection]
+      summary: List carriages in a train set
+      parameters:
+        - $ref: '#/components/parameters/TrainSetId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: sort
+          in: query
+          description: Repeatable sort expression; default is position,asc.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+          example: [position,asc]
+        - name: id
+          in: query
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+        - name: carriageNumber
+          in: query
+          schema:
+            type: string
+            maxLength: 16
+        - name: position
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: inventoryNumber
+          in: query
+          schema:
+            type: string
+        - name: serialNumber
+          in: query
+          schema:
+            type: string
+        - name: carriageTypeCode
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Carriages returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarriagePageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /train-sets/{trainSetId}/carriages/{carriageNumber}/seats:
+    get:
+      tags: [Inventory projection]
+      summary: List seats of a train-set carriage
+      parameters:
+        - $ref: '#/components/parameters/TrainSetId'
+        - name: carriageNumber
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 16
+        - $ref: '#/components/parameters/Page'
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: sort
+          in: query
+          description: Repeatable sort expression; default is seatNumber,asc.
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+          example: [seatNumber,asc]
+        - name: seatNumber
+          in: query
+          schema:
+            type: string
+            maxLength: 3
+        - name: x
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: y
+          in: query
+          schema:
+            type: number
+            format: double
+        - name: rotation
+          in: query
+          schema:
+            type: number
+            format: double
+      responses:
+        '200':
+          description: Seats returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeatPageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: One-based page number.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Size:
+      name: size
+      in: query
+      description: Page size; maximum 100.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Sort:
+      name: sort
+      in: query
+      description: Repeatable sort expression in the form field,direction where direction is asc or desc.
+      style: form
+      explode: true
+      schema:
+        type: array
+        items:
+          type: string
+      example: [creationDate,desc]
+    TicketId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    VenueId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    PriceHistoryId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+    TrainSetId:
+      name: trainSetId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+
+  responses:
+    BadRequest:
+      description: Request validation or parameter error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Requested object was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    TicketType:
+      type: string
+      enum: [VIP, USUAL, CHEAP]
+
+    Ticket:
+      type: object
+      required:
+        - id
+        - name
+        - creationDate
+        - venue
+        - carriageNumber
+        - seatNumber
+        - discount
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          description: Generated when omitted on creation; thereafter returned as the stored description.
+        creationDate:
+          type: string
+          format: date
+          readOnly: true
+        basePrice:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          nullable: true
+          readOnly: true
+          description: Current base price from the latest price-history row; may be null.
+        discount:
+          type: integer
+          minimum: 1
+          maximum: 100
+          readOnly: true
+          description: Current discount from the latest price-history row.
+        refundable:
+          type: boolean
+          nullable: true
+        type:
+          allOf:
+            - $ref: '#/components/schemas/TicketType'
+          nullable: true
+        venue:
+          $ref: '#/components/schemas/VenueReference'
+        carriageNumber:
+          type: string
+          minLength: 1
+          maxLength: 16
+          description: Passenger-facing carriage number copied from Inventory at ticket creation.
+        seatNumber:
+          type: string
+          minLength: 1
+          maxLength: 3
+          description: Inventory seat number, stored as a string such as 1A or 12F.
+
+    TicketCreateRequest:
+      type: object
+      required:
+        - venueId
+        - carriageNumber
+        - seatNumber
+        - discount
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Optional human-readable ticket description. Generated when omitted.
+        venueId:
+          type: integer
+          format: int64
+          minimum: 1
+        carriageNumber:
+          type: string
+          minLength: 1
+          maxLength: 16
+        seatNumber:
+          type: string
+          minLength: 1
+          maxLength: 3
+        basePrice:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          nullable: true
+        discount:
+          type: integer
+          minimum: 1
+          maximum: 100
+        refundable:
+          type: boolean
+          nullable: true
+        type:
+          allOf:
+            - $ref: '#/components/schemas/TicketType'
+          nullable: true
+
+    TicketUpdateRequest:
+      type: object
+      required:
+        - venueId
+        - carriageNumber
+        - seatNumber
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Optional replacement description. If omitted, the service may regenerate the default description.
+        venueId:
+          type: integer
+          format: int64
+          minimum: 1
+        carriageNumber:
+          type: string
+          minLength: 1
+          maxLength: 16
+        seatNumber:
+          type: string
+          minLength: 1
+          maxLength: 3
+        refundable:
+          type: boolean
+          nullable: true
+        type:
+          allOf:
+            - $ref: '#/components/schemas/TicketType'
+          nullable: true
+
+    Venue:
+      type: object
+      required:
+        - id
+        - name
+        - trainSetId
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        trainSetId:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Inventory train-set ID used for this concrete departure/run.
+
+    VenueReference:
+      allOf:
+        - $ref: '#/components/schemas/Venue'
+
+    VenueCreateRequest:
+      type: object
+      required:
+        - name
+        - trainSetId
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        trainSetId:
+          type: integer
+          format: int32
+          minimum: 1
+
+    VenueUpdateRequest:
+      type: object
+      required:
+        - name
+        - trainSetId
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        trainSetId:
+          type: integer
+          format: int32
+          minimum: 1
+
+    PriceHistory:
+      type: object
+      required:
+        - id
+        - ticketId
+        - changedDate
+        - discount
+      properties:
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+          readOnly: true
+        ticketId:
+          type: integer
+          format: int64
+          minimum: 1
+          readOnly: true
+        changedDate:
+          type: string
+          format: date-time
+          readOnly: true
+        basePrice:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          nullable: true
+        discount:
+          type: integer
+          minimum: 1
+          maximum: 100
+
+    PriceHistoryCreateRequest:
+      type: object
+      required:
+        - ticketId
+        - discount
+      properties:
+        ticketId:
+          type: integer
+          format: int64
+          minimum: 1
+        basePrice:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          nullable: true
+        discount:
+          type: integer
+          minimum: 1
+          maximum: 100
+
+    TrainSet:
+      type: object
+      required:
+        - id
+        - code
+        - name
+        - buildNumber
+        - technicalName
+        - snapshotVersion
+      properties:
+        id:
+          type: integer
+          format: int32
+          minimum: 1
+        code:
+          type: string
+        name:
+          type: string
+        buildNumber:
+          type: integer
+          minimum: 1
+        technicalName:
+          type: string
+        description:
+          type: string
+          nullable: true
+        snapshotVersion:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Version from inventory.train_set_cdc.
+
+    CarriageType:
+      type: object
+      required: [id, code, name]
+      properties:
+        id:
+          type: integer
+          format: int32
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+
+    Scheme:
+      type: object
+      required: [id, code, name, version, storageKey]
+      properties:
+        id:
+          type: integer
+          format: int32
+        code:
+          type: string
+        name:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        storageKey:
+          type: string
+
+    Carriage:
+      type: object
+      required:
+        - id
+        - carriageNumber
+        - position
+        - carriageType
+        - serialNumber
+        - inventoryNumber
+        - scheme
+      properties:
+        id:
+          type: integer
+          format: int32
+        carriageNumber:
+          type: string
+          maxLength: 16
+        position:
+          type: integer
+          minimum: 1
+        carriageType:
+          $ref: '#/components/schemas/CarriageType'
+        serialNumber:
+          type: string
+        inventoryNumber:
+          type: string
+        scheme:
+          $ref: '#/components/schemas/Scheme'
+
+    Seat:
+      type: object
+      required:
+        - id
+        - seatNumber
+        - x
+        - y
+        - rotation
+      properties:
+        id:
+          type: integer
+          format: int32
+        seatNumber:
+          type: string
+          minLength: 1
+          maxLength: 3
+        x:
+          type: number
+          format: double
+        y:
+          type: number
+          format: double
+        rotation:
+          type: number
+          format: double
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+        - timestamp
+        - path
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+
+    TicketPageResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages, hasNext, hasPrevious]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ticket'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+        hasNext:
+          type: boolean
+        hasPrevious:
+          type: boolean
+
+    VenuePageResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages, hasNext, hasPrevious]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Venue'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+        hasNext:
+          type: boolean
+        hasPrevious:
+          type: boolean
+
+    PriceHistoryPageResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages, hasNext, hasPrevious]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PriceHistory'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+        hasNext:
+          type: boolean
+        hasPrevious:
+          type: boolean
+
+    TrainSetPageResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages, hasNext, hasPrevious]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrainSet'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+        hasNext:
+          type: boolean
+        hasPrevious:
+          type: boolean
+
+    CarriagePageResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages, hasNext, hasPrevious]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Carriage'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+        hasNext:
+          type: boolean
+        hasPrevious:
+          type: boolean
+
+    SeatPageResponse:
+      type: object
+      required: [content, page, size, totalElements, totalPages, hasNext, hasPrevious]
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Seat'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+        totalElements:
+          type: integer
+          format: int64
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+        hasNext:
+          type: boolean
+        hasPrevious:
+          type: boolean

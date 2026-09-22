@@ -1,0 +1,245 @@
+- id: sso-ident-me
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/me>
+    methods:
+      - GET
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: remote_json
+  mutators:
+    - handler: header
+
+- id: sso-ident-me-groups
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/me/groups>
+    methods:
+      - GET
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: remote_json
+  mutators:
+    - handler: header
+
+- id: sso-ident-admin-add-group
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/admin/users/[0-9a-fA-F-]+/groups>
+    methods:
+      - POST
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: remote_json
+    config:
+      payload: |
+        {
+          "namespace": "Role",
+          "object": "Admin",
+          "relation": "members",
+          "subject_id": "{{ print .Subject }}"
+        }
+  mutators:
+    - handler: header
+
+- id: sso-ident-admin-remove-group
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/admin/users/[0-9a-fA-F-]+/groups/.+>
+    methods:
+      - DELETE
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: remote_json
+    config:
+      payload: |
+        {
+          "namespace": "Role",
+          "object": "Admin",
+          "relation": "members",
+          "subject_id": "{{ print .Subject }}"
+        }
+  mutators:
+    - handler: header
+
+- id: sso-ident-admin-user-groups
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/admin/users/[0-9a-fA-F-]+/groups>
+    methods:
+      - GET
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: remote_json
+    config:
+      payload: |
+        {
+          "namespace": "Role",
+          "object": "Admin",
+          "relation": "members",
+          "subject_id": "{{ print .Subject }}"
+        }
+  mutators:
+    - handler: header
+
+- id: sso-ident-admin-group-members
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/admin/groups/.+/members>
+    methods:
+      - GET
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: remote_json
+    config:
+      payload: |
+        {
+          "namespace": "Role",
+          "object": "Admin",
+          "relation": "members",
+          "subject_id": "{{ print .Subject }}"
+        }
+  mutators:
+    - handler: header
+
+- id: sso-ident-admin-groups
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/admin/groups>
+    methods:
+      - GET
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: remote_json
+    config:
+      payload: |
+        {
+          "namespace": "Role",
+          "object": "Admin",
+          "relation": "members",
+          "subject_id": "{{ print .Subject }}"
+        }
+  mutators:
+    - handler: header
+
+- id: sso-ident-login-public
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/auth/login>
+    methods:
+      - POST
+  authenticators:
+    - handler: anonymous
+      config:
+        subject: guest
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+- id: sso-ident-register-public
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/auth/register>
+    methods:
+      - POST
+  authenticators:
+    - handler: anonymous
+      config:
+        subject: guest
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+- id: sso-ident-logout-public
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/auth/logout>
+    methods:
+      - POST
+  authenticators:
+    - handler: anonymous
+      config:
+        subject: guest
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+- id: sso-ident-reset-password-public
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/auth/password/reset>
+    methods:
+      - POST
+  authenticators:
+    - handler: anonymous
+      config:
+        subject: guest
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+- id: sso-ident-reset-password-confirm-public
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/auth/password/reset/confirm>
+    methods:
+      - POST
+  authenticators:
+    - handler: anonymous
+      config:
+        subject: guest
+  authorizer:
+    handler: allow
+  mutators:
+    - handler: noop
+
+- id: sso-ident-change-password
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/me/password>
+    methods:
+      - POST
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: remote_json
+  mutators:
+    - handler: header
+
+- id: sso-ident-change-profile
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/sso-ident/me/profile>
+    methods:
+      - POST
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: remote_json
+  mutators:
+    - handler: header

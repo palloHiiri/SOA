@@ -1,0 +1,639 @@
+openapi: 3.1.0
+info:
+  title: SSO Identity Service
+  version: 0.0.1
+  description: Reactive identity and session service used with Ory Oathkeeper and Ory Keto.
+servers:
+  - url: http://localhost:8080
+    description: Spring application (direct)
+  - url: http://localhost:4455
+    description: Oathkeeper proxy
+
+tags:
+  - name: Authentication
+  - name: User
+  - name: Roles
+
+paths:
+  /api/v1/sso-ident/auth/register:
+    post:
+      tags: [Authentication]
+      operationId: register
+      summary: Register a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created. Status may be ACTIVE or PENDING.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/sso-ident/auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Login with email or username and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication result.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SessionCookie'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/sso-ident/auth/password/reset:
+    post:
+      tags: [Authentication]
+      operationId: requestPasswordReset
+      summary: Request a password reset code
+      description: Always returns OK for a valid email-shaped input, regardless of whether the address belongs to a user. For an active user, a UUID reset code is sent to the existing Redpanda verification-code topic using the email route. The endpoint accepts an HTML form style body.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '200':
+          description: Generic successful response to avoid user enumeration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/sso-ident/auth/password/reset/confirm:
+    post:
+      tags: [Authentication]
+      operationId: confirmPasswordReset
+      summary: Set a new password using a reset code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirmRequest'
+      responses:
+        '204':
+          description: Password changed and reset code consumed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/sso-ident/auth/mfa/email/request:
+    post:
+      tags: [Authentication]
+      operationId: requestEmailMfa
+      summary: Send an email MFA code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaRequest'
+      responses:
+        '202':
+          description: Code published to the configured Redpanda verification-code topic for notification delivery.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/sso-ident/auth/mfa/email/verify:
+    post:
+      tags: [Authentication]
+      operationId: verifyEmailMfa
+      summary: Verify an email MFA code and create a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MfaVerifyRequest'
+      responses:
+        '200':
+          description: MFA completed. Session cookie is created.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SessionCookie'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/sso-ident/me:
+    get:
+      tags: [User]
+      operationId: me
+      summary: Get the authenticated user
+      description: This endpoint also acts as the Oathkeeper cookie-session check endpoint.
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Current user. `subject` is the user UUID consumed by Oathkeeper.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          description: No active session.
+
+  /api/v1/sso-ident/me/password:
+    post:
+      tags: [User]
+      operationId: changeOwnPassword
+      summary: Change the authenticated user's password
+      description: The current password must match the stored password hash. An incorrect current password returns 401 Unauthorized.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: Password changed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: No active session or current password is incorrect.
+
+  /api/v1/sso-ident/me/profile:
+    post:
+      tags: [User]
+      operationId: updateOwnProfile
+      summary: Update the authenticated user's profile
+      description: Any supplied subset of username, email, firstName and lastName is updated. Omitted fields remain unchanged. Email and username must not already belong to another user.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+      responses:
+        '200':
+          description: Updated current user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: No active session.
+
+  /api/v1/sso-ident/me/groups:
+    get:
+      tags: [Roles]
+      operationId: getOwnGroups
+      summary: Get the authenticated user's groups
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Groups directly assigned to the authenticated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserGroupsResponse'
+        '401':
+          description: No active session.
+
+  /api/v1/sso-ident/admin/users/{userId}/groups:
+    post:
+      tags: [Roles]
+      operationId: addUserToGroup
+      summary: Add a role to a user
+      description: Adds direct membership in an existing role. The caller must be a member of the Admin role.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddGroupRequest'
+      responses:
+        '201':
+          description: Role membership added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          description: No active session.
+        '403':
+          description: Authenticated user is not an administrator.
+    get:
+      tags: [Roles]
+      operationId: getUserGroups
+      summary: Get all groups of a user
+      description: Returns the roles known to sso-ident that are directly assigned to the specified user.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User groups.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserGroupsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          description: No active session.
+        '403':
+          description: Authenticated user is not an administrator.
+
+  /api/v1/sso-ident/admin/users/{userId}/groups/{group}:
+    delete:
+      tags: [Roles]
+      operationId: removeUserFromGroup
+      summary: Remove a role from a user
+      description: Removes direct role membership. The default role cannot be removed from a user.
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - name: group
+          in: path
+          required: true
+          description: Role name.
+          schema:
+            type: string
+            maxLength: 128
+      responses:
+        '204':
+          description: Role membership removed.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          description: No active session.
+        '403':
+          description: Authenticated user is not an administrator.
+
+  /api/v1/sso-ident/admin/groups/{group}/members:
+    get:
+      tags: [Roles]
+      operationId: getGroupMembers
+      summary: Get all direct members of a group
+      description: Returns user UUIDs directly assigned to the specified role.
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: group
+          in: path
+          required: true
+          description: Role name.
+          schema:
+            type: string
+            maxLength: 128
+      responses:
+        '200':
+          description: Group members.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupMembersResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          description: No active session.
+        '403':
+          description: Authenticated user is not an administrator.
+
+  /api/v1/sso-ident/admin/groups:
+    get:
+      tags: [Roles]
+      operationId: getAllGroups
+      summary: Get all roles
+      description: Returns the complete role catalog, including roles with no current members.
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Role catalog.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GroupResponse'
+        '401':
+          description: No active session.
+        '403':
+          description: Authenticated user is not an administrator.
+
+  /api/v1/sso-ident/auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      security:
+        - sessionCookie: []
+      responses:
+        '204':
+          description: Session revoked.
+          headers:
+            Set-Cookie:
+              description: Expired SESSION cookie.
+              schema:
+                type: string
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: SESSION
+
+  headers:
+    SessionCookie:
+      description: HttpOnly session cookie.
+      schema:
+        type: string
+
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      description: User UUID.
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        username:
+          type: string
+          minLength: 3
+          maxLength: 128
+        password:
+          type: string
+          minLength: 8
+          maxLength: 1024
+        firstName:
+          type: string
+          maxLength: 255
+        lastName:
+          type: string
+          maxLength: 255
+
+    RegisterResponse:
+      type: object
+      required: [userId, status]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [ACTIVE, PENDING]
+
+    LoginRequest:
+      type: object
+      required: [login, password]
+      properties:
+        login:
+          type: string
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [AUTHENTICATED, MFA_REQUIRED]
+        userId:
+          type: string
+          format: uuid
+        challengeId:
+          type: string
+          format: uuid
+
+    PasswordResetRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+
+    PasswordResetConfirmRequest:
+      type: object
+      required: [code, newPassword]
+      properties:
+        code:
+          type: string
+          format: uuid
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 1024
+
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 1024
+
+    ProfileUpdateRequest:
+      type: object
+      minProperties: 1
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        username:
+          type: string
+          minLength: 3
+          maxLength: 128
+        firstName:
+          type: string
+          maxLength: 255
+        lastName:
+          type: string
+          maxLength: 255
+
+    AddGroupRequest:
+      type: object
+      required: [group]
+      properties:
+        group:
+          type: string
+          maxLength: 128
+          description: Existing role name.
+
+    GroupResponse:
+      type: object
+      required: [id, name, isDefault]
+      properties:
+        id:
+          type: integer
+          format: int32
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        isDefault:
+          type: boolean
+
+    UserGroupsResponse:
+      type: object
+      required: [userId, groups]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/GroupResponse'
+
+    GroupMembersResponse:
+      type: object
+      required: [group, memberUserIds]
+      properties:
+        group:
+          type: string
+        memberUserIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    OkResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [OK]
+
+    MfaRequest:
+      type: object
+      required: [challengeId]
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+
+    MfaVerifyRequest:
+      type: object
+      required: [challengeId, code]
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+
+    VerificationResponse:
+      type: object
+      required: [challengeId, expiresAt]
+      properties:
+        challengeId:
+          type: string
+          format: uuid
+        expiresAt:
+          type: string
+          format: date-time
+
+    MeResponse:
+      type: object
+      required: [userId, subject, status, attributes]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        subject:
+          type: string
+        status:
+          type: string
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+  responses:
+    NotFound:
+      description: The requested user or role does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: The requested operation conflicts with current state, such as duplicate membership or attempting to remove the default role.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadRequest:
+      description: Invalid request or business validation error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

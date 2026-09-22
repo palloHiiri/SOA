@@ -1,0 +1,70 @@
+log:
+  level: debug
+  format: json
+
+serve:
+  proxy:
+    host: 0.0.0.0
+    port: 4455
+    timeout:
+      read: 5s
+      write: 10s
+      idle: 60s
+  api:
+    host: 0.0.0.0
+    port: 4456
+
+access_rules:
+  matching_strategy: regexp
+  repositories:
+    - file:///etc/oathkeeper/access-rules/sso-ident.yml
+    - file:///etc/oathkeeper/access-rules/clients.yml
+    - file:///etc/oathkeeper/access-rules/inventory.yml
+    - file:///etc/oathkeeper/access-rules/tickets.yml
+
+authenticators:
+  cookie_session:
+    enabled: true
+    config:
+      check_session_url: http://sso-ident:8080/api/v1/sso-ident/me
+      only:
+        - SESSION
+      preserve_path: true
+
+  anonymous:
+    enabled: true
+  noop:
+    enabled: true
+
+authorizers:
+  allow:
+    enabled: true
+  remote_json:
+    enabled: true
+    config:
+      remote: http://keto:4466/relation-tuples/check
+      payload: |
+        {
+          "namespace": "Service",
+          "object": "sso-ident",
+          "relation": "access",
+          "subject_id": "{{ print .Subject }}"
+        }
+
+mutators:
+  noop:
+    enabled: true
+  header:
+    enabled: true
+    config:
+      headers:
+        X-User-ID: "{{ print .Subject }}"
+
+errors:
+  fallback:
+    - json
+  handlers:
+    json:
+      enabled: true
+      config:
+        verbose: true

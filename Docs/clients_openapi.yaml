@@ -1,0 +1,429 @@
+openapi: 3.1.0
+info:
+  title: Clients Service API
+  version: 1.0.0
+  description: |
+    API of the clients service for the personal account in the train ticket
+    booking platform. Identity fields are mastered by sso-ident and exposed
+    here as a read model. Passenger data is owned by clients.
+servers:
+  - url: http://localhost:4455
+    description: Local Oathkeeper entry point
+
+tags:
+  - name: Client
+    description: Current authenticated client profile
+  - name: Passengers
+    description: Passengers belonging to the current authenticated client
+
+paths:
+  /api/v1/clients-srv/client/profile:
+    options:
+      tags: [Client]
+      summary: CORS preflight
+      security: []
+      responses:
+        '204':
+          description: Preflight accepted
+    put:
+      tags: [Client]
+      operationId: updateClientProfile
+      summary: Replace client-owned profile fields
+      description: |
+        Replaces the fields owned by the clients service. Identity fields
+        such as email, username, firstName and lastName remain mastered by
+        sso-ident and cannot be changed here. `extraFields` is replaced as a
+        whole; this API intentionally does not expose PATCH semantics.
+      parameters:
+        - $ref: '#/components/parameters/XUserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientProfileUpdateRequest'
+      responses:
+        '200':
+          description: Updated current client profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Client profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags: [Client]
+      operationId: getClientProfile
+      summary: Get current client profile
+      description: |
+        Returns the profile belonging to the currently authenticated user.
+        Oathkeeper authenticates the session and injects X-User-ID before the
+        request reaches the clients service.
+      parameters:
+        - $ref: '#/components/parameters/XUserId'
+      responses:
+        '200':
+          description: Current client profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Client profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/clients-srv/client/passengers:
+    options:
+      tags: [Passengers]
+      summary: CORS preflight
+      security: []
+      responses:
+        '204':
+          description: Preflight accepted
+    get:
+      tags: [Passengers]
+      operationId: listPassengers
+      summary: List current client's passengers
+      parameters:
+        - $ref: '#/components/parameters/XUserId'
+      responses:
+        '200':
+          description: Passenger list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PassengerResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Current client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Passengers]
+      operationId: createPassenger
+      summary: Create a passenger
+      parameters:
+        - $ref: '#/components/parameters/XUserId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PassengerCreateRequest'
+      responses:
+        '201':
+          description: Passenger created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PassengerResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Current client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/clients-srv/client/passengers/{id}:
+    options:
+      tags: [Passengers]
+      summary: CORS preflight
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/PassengerId'
+      responses:
+        '204':
+          description: Preflight accepted
+    get:
+      tags: [Passengers]
+      operationId: getPassenger
+      summary: Get one passenger
+      parameters:
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/PassengerId'
+      responses:
+        '200':
+          description: Passenger
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PassengerResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Passenger not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Passengers]
+      operationId: updatePassenger
+      summary: Replace a passenger
+      parameters:
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/PassengerId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PassengerCreateRequest'
+      responses:
+        '200':
+          description: Passenger updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PassengerResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Passenger not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Passengers]
+      operationId: deletePassenger
+      summary: Delete a passenger
+      parameters:
+        - $ref: '#/components/parameters/XUserId'
+        - $ref: '#/components/parameters/PassengerId'
+      responses:
+        '204':
+          description: Passenger deleted
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Passenger not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    cookieSession:
+      type: apiKey
+      in: cookie
+      name: SESSION
+      description: |
+        Session cookie used by Oathkeeper's cookie_session authenticator.
+
+  parameters:
+    XUserId:
+      name: X-User-ID
+      in: header
+      required: true
+      description: |
+        User UUID injected by Oathkeeper after successful authentication.
+        It is shown in the contract because it exists on the downstream hop;
+        browser clients normally do not set it themselves.
+      schema:
+        type: string
+        format: uuid
+    PassengerId:
+      name: id
+      in: path
+      required: true
+      description: Passenger UUID
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    ClientProfileUpdateRequest:
+      type: object
+      required: [extraFields]
+      properties:
+        phoneNumber:
+          type: [string, 'null']
+          maxLength: 64
+          description: Client-owned phone number. Null clears the value.
+        extraFields:
+          type: object
+          additionalProperties: true
+          description: Entire JSON object replacing the previous extra_fields value.
+
+    ClientProfileResponse:
+      type: object
+      required:
+        - clientId
+        - userId
+        - email
+        - firstName
+        - lastName
+        - username
+        - extraFields
+        - updatedAt
+      properties:
+        clientId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        firstName:
+          type: [string, 'null']
+          maxLength: 255
+        lastName:
+          type: [string, 'null']
+          maxLength: 255
+        username:
+          type: [string, 'null']
+          maxLength: 128
+        phoneNumber:
+          type: [string, 'null']
+          maxLength: 64
+        extraFields:
+          type: object
+          additionalProperties: true
+        updatedAt:
+          type: string
+          format: date-time
+
+    PassengerCreateRequest:
+      type: object
+      required:
+        - firstName
+        - middleName
+        - lastName
+        - documentTypeId
+        - documentSeriesNumber
+        - documentNumber
+        - birthDate
+        - email
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        middleName:
+          type: string
+          maxLength: 255
+          description: Middle name. Empty string is allowed.
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 255
+        documentTypeId:
+          type: integer
+        documentSeriesNumber:
+          type: string
+          minLength: 1
+          maxLength: 64
+        documentNumber:
+          type: string
+          minLength: 1
+          maxLength: 128
+        birthDate:
+          type: string
+          format: date
+          description: Must be a date in the past.
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 320
+        phoneNumber:
+          type: [string, 'null']
+          maxLength: 64
+
+    PassengerResponse:
+      allOf:
+        - $ref: '#/components/schemas/PassengerCreateRequest'
+        - type: object
+          required:
+            - id
+            - clientId
+            - documentTypeCode
+            - documentTypeName
+          properties:
+            id:
+              type: string
+              format: uuid
+            clientId:
+              type: string
+              format: uuid
+            documentTypeCode:
+              type: string
+            documentTypeName:
+              type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad request or validation failure
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Authentication required
+    Forbidden:
+      description: Authenticated user is not allowed to access clients service
+
+security:
+  - cookieSession: []

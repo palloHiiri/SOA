@@ -1,0 +1,33 @@
+{
+  "name": "inventory-train-set-cdc",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "tasks.max": "1",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "debezium",
+    "database.password": "debezium",
+    "database.dbname": "inventory",
+    "plugin.name": "pgoutput",
+    "slot.name": "inventory_train_set_cdc_slot",
+    "publication.name": "inventory_train_set_cdc_publication",
+    "publication.autocreate.mode": "disabled",
+    "table.include.list": "public.train_set_cdc",
+    "snapshot.mode": "no_data",
+    "topic.prefix": "inventory",
+    "schema.history.internal": "io.debezium.storage.kafka.history.KafkaSchemaHistory",
+    "schema.history.internal.kafka.topic": "schema-history.inventory",
+    "schema.history.internal.kafka.bootstrap.servers": "redpanda:9092",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "false",
+    "transforms": "unwrap,route",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.add.fields": "op,table,lsn",
+    "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.route.regex": "^inventory\\.public\\.train_set_cdc$",
+    "transforms.route.replacement": "inventory.train_set_snapshots",
+    "message.key.columns": "public.train_set_cdc:train_set_id",
+    "key.converter.schemas.enable": "false"
+  }
+}

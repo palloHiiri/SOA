@@ -1,0 +1,50 @@
+spring:
+  codec:
+    log-request-details: true
+  application:
+    name: sso-ident
+
+  r2dbc:
+    url: ${SPRING_R2DBC_URL:r2dbc:postgresql://localhost:5433/sso_ident}
+    username: ${SPRING_R2DBC_USERNAME:admin}
+    password: ${SPRING_R2DBC_PASSWORD:admin}
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      enable-idempotence: true
+
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+sso:
+  session:
+    cookie-name: ${SSO_SESSION_COOKIE_NAME:SESSION}
+    ttl: ${SSO_SESSION_TTL:30d}
+  kafka:
+    user-registration-topic: ${SSO_KAFKA_USER_REGISTRATION_TOPIC:sso.ident.user_registration.clients}
+    verification-sms-topic: ${SSO_KAFKA_VERIFICATION_SMS_TOPIC:sso.ident.verification_codes.sms}
+    verification-email-topic: ${SSO_KAFKA_VERIFICATION_EMAIL_TOPIC:sso.ident.verification_codes.email}
+  keto:
+    base-url: ${SSO_KETO_BASE_URL:http://localhost:4467}
+    read-base-url: ${SSO_KETO_READ_BASE_URL:http://localhost:4466}
+    role-namespace: Role
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    org.springframework.http: ${LOGGING_LEVEL_HTTP:DEBUG}
