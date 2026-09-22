@@ -1,54 +1,59 @@
 export type TicketType = "VIP" | "USUAL" | "CHEAP";
 
-export interface Coordinates {
-    x: number;
-    y: number;
-}
-
 export interface Venue {
-    id?: number;
+    id: number;
     name: string;
-    capacity: number;
+    trainSetId: number;
 }
 
 export interface Ticket {
-    id?: number;
+    id: number;
     name: string;
-    coordinates: Coordinates;
-    creationDate?: string;
-    price?: number;
-    discount?: number;
-    refundable?: boolean;
-    type?: TicketType;
-    venue?: Venue;
+    creationDate: string;
+
+    basePrice: number | null;
+    discount: number;
+
+    refundable: boolean | null;
+    type: TicketType | null;
+
+    venue: Venue;
+
+    carriageNumber: string;
+    seatNumber: string;
 }
 
 export interface TicketResponse {
     content: Ticket[];
+
     page: number;
     size: number;
+
     totalElements: number;
     totalPages: number;
+
     hasNext: boolean;
     hasPrevious: boolean;
 }
 
 export interface TicketRequest {
-    page: number;
-    size: number;
+    page?: number;
+    size?: number;
     sort?: string;
-    
+
     id?: number;
     name?: string;
     creationDate?: string;
-    price?: number;
+
+    venueId?: number;
+    trainSetId?: number;
+
+    carriageNumber?: string;
+    seatNumber?: string;
+
+    basePrice?: number;
     discount?: number;
+
     refundable?: boolean;
     type?: TicketType;
-    coordinates?: Partial<Coordinates>;
-    venue?: {
-        id?: number;
-        name?: string;
-        capacity?: number;
-    }
 }
