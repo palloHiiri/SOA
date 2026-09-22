@@ -1,6 +1,6 @@
 import type { BookResponse, BookingError } from "../types/booking";
 
-const BOOKING_BASE_URL = "/booking-api/api/v1/booking";
+const BOOKING_BASE_URL = "/api/v1/booking";
 
 async function readResponse(response: Response): Promise<BookResponse> {
   if (response.ok) {

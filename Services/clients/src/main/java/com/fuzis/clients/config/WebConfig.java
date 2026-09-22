@@ -11,6 +11,12 @@ public class WebConfig implements WebFluxConfigurer {
         registry.addMapping("/api/v1/clients-srv/**")
         .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
         .allowCredentials(true)
-        .allowedOrigins("http://localhost:3000", "http://localhost:5173");
+        .allowedOrigins(
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "https://localhost:8443",
+        "https://127.0.0.1:8443",
+        "https://http://157.22.189.188:8443"
+        );
     }
 }

@@ -71,6 +71,8 @@ The project runs the common infrastructure and backend services from one Docker 
 | `inventory` | MVC train-set import/lifecycle API + CDC source, GraalVM Native Image | internal `8080` | PostgreSQL `inventory` |
 | `booking` | Spring MVC booking/sales API packaged as a WAR and deployed to Tomcat 11 | `8075 -> 8080` | PostgreSQL `booking` |
 | `nginx` | Internal backend reverse proxy | internal `80` | none |
+| `frontend-nginx` | Static frontend server | internal `8080` | none |
+| `entrypoint-nginx` | External HTTPS entrypoint and static frontend/API gateway | `8443 -> 8443` | none |
 | `oathkeeper` | Reverse proxy + authentication/authorization | `4455`, `4456` | none |
 
 ## Redpanda
@@ -183,7 +185,9 @@ postgres + liquibase + topic-init -------------> clients
 postgres + liquibase + keto-init -------------> inventory
 postgres + liquibase --------------------------> booking
 
-sso-ident + clients + inventory -> nginx -> oathkeeper
+sso-ident + clients + inventory + booking -> nginx -> oathkeeper
+frontend -> frontend-nginx -> entrypoint-nginx
+entrypoint-nginx -> oathkeeper -> nginx -> application backends
 redpanda + debezium-connect -> redpanda-console
 ```
 
@@ -193,13 +197,17 @@ Redpanda Console is exposed on `http://localhost:8088`. It connects to the Redpa
 
 ## Internal reverse-proxy
 
-The Compose stack contains an internal `nginx` service between Oathkeeper and application backends. Oathkeeper access-rule `upstream.url` points to `http://nginx:80`. Nginx routes `/api/v1/sso-ident/...`, `/api/v1/clients-srv/...`, `/api/v1/inventory/...` and `/api/v1/tickets/...` to their respective services and returns 404 for unrelated paths.
+The Compose stack contains an internal `nginx` service between Oathkeeper and application backends. Oathkeeper access-rule `upstream.url` points to `http://nginx:80`. Nginx routes `/api/v1/sso-ident/...`, `/api/v1/clients-srv/...`, `/api/v1/inventory/...`, `/api/v1/tickets/...` and `/api/v1/booking/...` to their respective services and returns 404 for unrelated paths.
+
+The external `entrypoint-nginx` listens on HTTPS port `8443` and uses a self-signed development certificate. It rejects HTTP requests on its port 80 listener. Requests under `/api` are forwarded to Oathkeeper, requests under `/swagger` are forwarded to the host through the Docker `host-gateway` address on port `8082`, and all other requests are forwarded to `frontend-nginx`. Container upstreams use Docker DNS through the `127.0.0.11` resolver and a variable-based `proxy_pass`, allowing recreated containers to receive fresh addresses.
+
+`frontend-nginx` is built from `Frontend/Dockerfile` with the React application compiled into the image and serves the generated static files with SPA fallback.
 
 ## Booking service
 
 `booking` is built as `booking.war` and deployed as the `/booking` web application in Tomcat 11. Compose publishes Tomcat on `http://localhost:8075`. The service is started after the PostgreSQL health check and successful Liquibase migration. Its existing application-level Clients Service, Tickets Service and database addresses are preserved.
 
-The API is documented in `Docs/booking_openapi.yaml`. In addition to selling a ticket, Booking exposes a passenger ticket list and a boolean check for whether a ticket already has a sale record.
+The API is documented in `Docs/booking_openapi.yaml`. In addition to selling a ticket, Booking exposes a passenger ticket list and a boolean check for whether a ticket already has a sale record. Booking endpoints are protected by Oathkeeper and require a valid session belonging to a member of `Role:User`; Keto grants that role access to the `booking-service` object.
 
 ## Initial system administrator bootstrap
 

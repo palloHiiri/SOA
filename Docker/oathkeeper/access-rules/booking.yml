@@ -1,0 +1,26 @@
+- id: booking-api
+  upstream:
+    url: http://nginx:80
+  match:
+    url: <.*/api/v1/booking(?:/.*)?>
+    methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+  authenticators:
+    - handler: cookie_session
+  authorizer:
+    handler: remote_json
+    config:
+      payload: |
+        {
+          "namespace": "Service",
+          "object": "booking-service",
+          "relation": "access",
+          "subject_id": "{{ print .Subject }}"
+        }
+  mutators:
+    - handler: header

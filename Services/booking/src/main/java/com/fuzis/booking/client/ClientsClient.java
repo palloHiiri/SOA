@@ -17,7 +17,7 @@ public class ClientsClient {
 
     public ClientsClient() {
         this.restClient = RestClient.builder()
-                .baseUrl("http://157.22.189.188:8082/api/v1/clients-srv/")
+                .baseUrl("http://sso-oathkeeper:4455/api/v1/clients-srv/")
                 .build();
     }
 

@@ -21,6 +21,7 @@ access_rules:
     - file:///etc/oathkeeper/access-rules/clients.yml
     - file:///etc/oathkeeper/access-rules/inventory.yml
     - file:///etc/oathkeeper/access-rules/tickets.yml
+    - file:///etc/oathkeeper/access-rules/booking.yml
 
 authenticators:
   cookie_session:

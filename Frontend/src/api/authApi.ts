@@ -7,7 +7,7 @@ import type {
   RegisterResponse,
 } from "../types/auth";
 
-const AUTH_BASE_URL = "/auth-api";
+const AUTH_BASE_URL = "/api/v1/sso-ident";
 
 async function readError(response: Response): Promise<string> {
   try {
