@@ -30,9 +30,11 @@ import { TicketFilters } from "./components/TicketFilters";
 
 import { TicketToolsPage } from "./components/TicketToolsPage";
 
+import { VenuesPage } from "./components/VenuesPage";
+
 type AuthMode = "login" | "register";
 
-type Page = "tickets" | "passengers" | "tools";
+type Page = "tickets" | "routes" | "passengers" | "tools";
 
 type BookingMode = "sell" | "discount";
 
@@ -423,6 +425,18 @@ function App() {
           type="button"
 
           className={
+            activePage === "routes" ? "nav-button active" : "nav-button"
+          }
+
+          onClick={() => setActivePage("routes")}
+        >
+          Routes
+        </button>
+
+        <button
+          type="button"
+
+          className={
             activePage === "passengers" ? "nav-button active" : "nav-button"
           }
 
@@ -670,6 +684,8 @@ function App() {
           )}
         </section>
       )}
+
+      {activePage === "routes" && <VenuesPage />}
 
       {/* Раздел пассажиров. */}
 

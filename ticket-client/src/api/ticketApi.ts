@@ -5,8 +5,12 @@ import type {
   TicketCreateRequest,
   TicketRequest,
   TicketResponse,
-  VenueResponse,
   TicketUpdateRequest,
+  TrainSetResponse,
+  Venue,
+  VenueCreateRequest,
+  VenueResponse,
+  VenueUpdateRequest,
 } from "../types/ticket";
 
 const API_BASE_URL = "/api/v1/tickets";
@@ -213,4 +217,94 @@ export async function fetchTicketsBelowDiscount(
   }
 
   return response.json();
+}
+
+export async function fetchTrainSets():
+Promise<TrainSetResponse> {
+
+  const response = await fetch(
+    `${API_BASE_URL}/train-sets?page=1&size=100&sort=id,asc`
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readTicketError(response)
+    );
+  }
+
+  return response.json();
+}
+
+
+export async function createVenue(
+  request: VenueCreateRequest
+): Promise<Venue> {
+
+  const response = await fetch(
+    `${API_BASE_URL}/venues`,
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify(request)
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readTicketError(response)
+    );
+  }
+
+  return response.json();
+}
+
+
+export async function updateVenue(
+  venueId: number,
+  request: VenueUpdateRequest
+): Promise<Venue> {
+
+  const response = await fetch(
+    `${API_BASE_URL}/venues/${venueId}`,
+    {
+      method: "PUT",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify(request)
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readTicketError(response)
+    );
+  }
+
+  return response.json();
+}
+
+
+export async function deleteVenue(
+  venueId: number
+): Promise<void> {
+
+  const response = await fetch(
+    `${API_BASE_URL}/venues/${venueId}`,
+    {
+      method: "DELETE"
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await readTicketError(response)
+    );
+  }
 }

@@ -1203,3 +1203,41 @@ body {
   transform: translate(0, 0);
   box-shadow: none;
 }
+
+.venue-mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  gap: 8px;
+
+  margin-bottom: 14px;
+}
+
+.venue-mode-button {
+  padding: 9px 12px;
+
+  border: 1px solid var(--cobalt);
+  border-radius: 4px;
+
+  background: var(--parade-white);
+  color: var(--cobalt);
+
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.venue-mode-button:hover {
+  background: var(--ice);
+}
+
+.venue-mode-button.active {
+  background: var(--cobalt);
+  color: var(--parade-white);
+}
+
+.route-table-wrapper {
+  overflow-x: auto;
+}

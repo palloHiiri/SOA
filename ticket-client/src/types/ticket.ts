@@ -141,3 +141,36 @@ export interface TicketUpdateRequest {
   refundable?: boolean | null;
   type?: TicketType | null;
 }
+
+export interface TrainSet {
+  id: number;
+  code: string;
+  name: string;
+  buildNumber: number;
+  technicalName: string;
+  description: string | null;
+  snapshotVersion: number;
+}
+
+export interface TrainSetResponse {
+  content: TrainSet[];
+
+  page: number;
+  size: number;
+
+  totalElements: number;
+  totalPages: number;
+
+  hasNext: boolean;
+  hasPrevious: boolean;
+}
+
+export interface VenueCreateRequest {
+  name: string;
+  trainSetId: number;
+}
+
+export interface VenueUpdateRequest {
+  name: string;
+  trainSetId: number;
+}

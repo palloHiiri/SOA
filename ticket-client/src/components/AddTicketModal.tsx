@@ -5,38 +5,52 @@ import type {
   Seat,
   Ticket,
   TicketType,
+  TrainSet,
   Venue,
 } from "../types/ticket";
 
 import {
   createTicket,
+  createVenue,
   fetchCarriages,
   fetchSeats,
+  fetchTrainSets,
   fetchVenues,
 } from "../api/ticketApi";
 
 interface AddTicketModalProps {
   onClose: () => void;
-
   onCreated: (ticket: Ticket) => void;
 }
 
+type VenueMode = "existing" | "new";
+
 export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
-  // Состояние данных маршрута.
+  // Состояние справочных данных.
+
+  const [trainSets, setTrainSets] = useState<TrainSet[]>([]);
+
   const [venues, setVenues] = useState<Venue[]>([]);
 
   const [carriages, setCarriages] = useState<Carriage[]>([]);
 
   const [seats, setSeats] = useState<Seat[]>([]);
 
-  // Состояние выбранного места.
+  // Состояние выбранного поезда и маршрута.
+  const [trainSetId, setTrainSetId] = useState<number | null>(null);
+
+  const [venueMode, setVenueMode] = useState<VenueMode>("existing");
+
   const [venueId, setVenueId] = useState<number | null>(null);
 
+  const [newVenueName, setNewVenueName] = useState("");
+
+  // Состояние выбранного места.
   const [carriageNumber, setCarriageNumber] = useState("");
 
   const [seatNumber, setSeatNumber] = useState("");
 
-  // Состояние данных билета.
+  // Состояние создаваемого билета.
   const [name, setName] = useState("");
 
   const [basePrice, setBasePrice] = useState("");
@@ -49,49 +63,73 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
 
   const [type, setType] = useState<TicketType | "">("USUAL");
 
-  // Состояние отправки формы.
   const [loading, setLoading] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
-  // Загрузка площадок.
+  // Загрузка поездов и маршрутов.
+
   useEffect(() => {
-    async function load() {
+    async function loadInitialData() {
       try {
-        const response = await fetchVenues();
+        setError(null);
 
-        setVenues(response.content);
+        const [trainResponse, venueResponse] = await Promise.all([
+          fetchTrainSets(),
+          fetchVenues(),
+        ]);
 
-        if (response.content.length > 0) {
-          setVenueId(response.content[0].id);
+        setTrainSets(trainResponse.content);
+
+        setVenues(venueResponse.content);
+
+        if (trainResponse.content.length > 0) {
+          setTrainSetId(trainResponse.content[0].id);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load venues");
+        setError(err instanceof Error ? err.message : "Failed to load data");
       }
     }
 
-    load();
+    void loadInitialData();
   }, []);
 
-  // Загрузка вагонов выбранной площадки.
+  // Обновление маршрутов при смене поезда.
+
   useEffect(() => {
-    if (venueId === null) {
+    if (trainSetId === null || venueMode !== "existing") {
       return;
     }
 
-    const venue = venues.find((value) => value.id === venueId);
+    const matchingVenues = venues.filter(
+      (venue) => venue.trainSetId === trainSetId,
+    );
 
-    if (!venue) {
+    const currentStillValid = matchingVenues.some(
+      (venue) => venue.id === venueId,
+    );
+
+    if (!currentStillValid) {
+      setVenueId(matchingVenues[0]?.id ?? null);
+    }
+  }, [trainSetId, venueMode, venues, venueId]);
+
+  // Загрузка вагонов выбранного поезда.
+
+  useEffect(() => {
+    if (trainSetId === null) {
       return;
     }
 
-    async function load() {
+    async function loadCarriages() {
       try {
+        setError(null);
+
         setCarriageNumber("");
         setSeatNumber("");
         setSeats([]);
 
-        const response = await fetchCarriages(venue!.trainSetId);
+        const response = await fetchCarriages(trainSetId!);
 
         const valid = response.content.filter(
           (carriage) => carriage.carriageNumber !== null,
@@ -109,26 +147,22 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
       }
     }
 
-    load();
-  }, [venueId, venues]);
+    void loadCarriages();
+  }, [trainSetId]);
 
   // Загрузка мест выбранного вагона.
+
   useEffect(() => {
-    if (venueId === null || !carriageNumber) {
+    if (trainSetId === null || !carriageNumber) {
       return;
     }
 
-    const venue = venues.find((value) => value.id === venueId);
-
-    if (!venue) {
-      return;
-    }
-
-    async function load() {
+    async function loadSeats() {
       try {
+        setError(null);
         setSeatNumber("");
 
-        const response = await fetchSeats(venue!.trainSetId, carriageNumber);
+        const response = await fetchSeats(trainSetId!, carriageNumber);
 
         const valid = response.content.filter(
           (seat) => seat.seatNumber !== null,
@@ -144,25 +178,46 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
       }
     }
 
-    load();
-  }, [carriageNumber, venueId, venues]);
+    void loadSeats();
+  }, [trainSetId, carriageNumber]);
 
-  // Обработка создания билета.
+  const availableVenues =
+    trainSetId === null
+      ? []
+      : venues.filter((venue) => venue.trainSetId === trainSetId);
+
+  // Создание маршрута и билета.
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
-    if (venueId === null) {
-      setError("Select a venue");
+    if (trainSetId === null) {
+      setError("Select a train");
+
+      return;
+    }
+
+    if (venueMode === "existing" && venueId === null) {
+      setError("Select an existing route or create a new one");
+
+      return;
+    }
+
+    if (venueMode === "new" && !newVenueName.trim()) {
+      setError("Enter route name");
+
       return;
     }
 
     if (!carriageNumber) {
       setError("Select a carriage");
+
       return;
     }
 
     if (!seatNumber) {
       setError("Select a seat");
+
       return;
     }
 
@@ -176,10 +231,26 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
       setLoading(true);
       setError(null);
 
+      let actualVenueId = venueId;
+
+      if (venueMode === "new") {
+        const createdVenue = await createVenue({
+          name: newVenueName.trim(),
+
+          trainSetId,
+        });
+
+        actualVenueId = createdVenue.id;
+      }
+
+      if (actualVenueId === null) {
+        throw new Error("Venue is not selected");
+      }
+
       const ticket = await createTicket({
         name: name.trim() || null,
 
-        venueId,
+        venueId: actualVenueId,
 
         carriageNumber,
         seatNumber,
@@ -194,7 +265,6 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
       });
 
       onCreated(ticket);
-
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create ticket");
@@ -203,7 +273,6 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
     }
   }
 
-  // Форма создания билета.
   return (
     <div
       className="modal-backdrop"
@@ -228,33 +297,112 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
             <h2>Add ticket</h2>
           </div>
 
-          <button
-            type="button"
-            className="close-button"
-
-            onClick={onClose}
-          >
+          <button type="button" className="close-button" onClick={onClose}>
             ×
           </button>
         </div>
 
         <label className="form-field">
-          <span>Venue *</span>
+          <span>Train *</span>
 
           <select
-            value={venueId ?? ""}
+            value={trainSetId ?? ""}
 
-            onChange={(event) => setVenueId(Number(event.target.value))}
+            onChange={(event) => setTrainSetId(Number(event.target.value))}
           >
-            {venues.map((venue) => (
-              <option key={venue.id} value={venue.id}>
-                {venue.name}
+            {trainSets.map((train) => (
+              <option key={train.id} value={train.id}>
+                {train.name}
+
                 {" — "}
-                Train set #{venue.trainSetId}
+
+                {train.code}
+
+                {" — #"}
+
+                {train.id}
               </option>
             ))}
           </select>
         </label>
+
+        <div className="venue-mode-switch">
+          <button
+            type="button"
+
+            className={
+              venueMode === "existing"
+                ? "venue-mode-button active"
+                : "venue-mode-button"
+            }
+
+            onClick={() => setVenueMode("existing")}
+          >
+            Existing route
+          </button>
+
+          <button
+            type="button"
+
+            className={
+              venueMode === "new"
+                ? "venue-mode-button active"
+                : "venue-mode-button"
+            }
+
+            onClick={() => setVenueMode("new")}
+          >
+            New route
+          </button>
+        </div>
+
+        {venueMode === "existing" && (
+          <label className="form-field">
+            <span>Route *</span>
+
+            {availableVenues.length > 0 ? (
+              <select
+                value={venueId ?? ""}
+
+                onChange={(event) => setVenueId(Number(event.target.value))}
+              >
+                {availableVenues.map((venue) => (
+                  <option key={venue.id} value={venue.id}>
+                    {venue.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="no-passengers-warning">
+                <span>This train has no routes yet.</span>
+
+                <button
+                  type="button"
+
+                  onClick={() => setVenueMode("new")}
+                >
+                  Create route
+                </button>
+              </div>
+            )}
+          </label>
+        )}
+
+        {venueMode === "new" && (
+          <label className="form-field">
+            <span>New route name *</span>
+
+            <input
+              value={newVenueName}
+
+              placeholder="Berlin → Hamburg"
+
+              onChange={(event) => setNewVenueName(event.target.value)}
+            />
+
+            <small>The route will be linked to the selected train.</small>
+          </label>
+        )}
 
         <div className="form-row">
           <label className="form-field">
@@ -299,7 +447,7 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
         </div>
 
         <label className="form-field">
-          <span>Name</span>
+          <span>Ticket name</span>
 
           <input
             value={name}
@@ -308,8 +456,6 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
 
             onChange={(event) => setName(event.target.value)}
           />
-
-          <small>If empty, server generates the ticket name.</small>
         </label>
 
         <div className="form-row">
@@ -322,8 +468,6 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
               step="0.01"
 
               value={basePrice}
-
-              placeholder="5000"
 
               onChange={(event) => setBasePrice(event.target.value)}
             />
@@ -350,6 +494,7 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
 
             <select
               value={type}
+
               onChange={(event) => {
                 const value = event.target.value;
 
@@ -364,8 +509,11 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
               }}
             >
               <option value="">None</option>
+
               <option value="VIP">VIP</option>
+
               <option value="USUAL">USUAL</option>
+
               <option value="CHEAP">CHEAP</option>
             </select>
           </label>
@@ -376,9 +524,13 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
             <select
               value={refundable}
 
-              onChange={(event) =>
-                setRefundable(event.target.value as "true" | "false" | "null")
-              }
+              onChange={(event) => {
+                const value = event.target.value;
+
+                if (value === "true" || value === "false" || value === "null") {
+                  setRefundable(value);
+                }
+              }}
             >
               <option value="true">Yes</option>
 
