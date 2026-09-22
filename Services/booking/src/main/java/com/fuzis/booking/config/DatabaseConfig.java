@@ -17,7 +17,7 @@ public class DatabaseConfig {
         config.setJdbcUrl(
                 "jdbc:postgresql://157.22.189.188:5433/booking"
         );
-
+        config.setDriverClassName("org.postgresql.Driver");
         config.setUsername("postgres");
         config.setPassword("postgres");
 

@@ -5,8 +5,10 @@ import com.fuzis.booking.client.TicketsClient;
 import com.fuzis.booking.client.dto.PassengerResponse;
 import com.fuzis.booking.client.dto.TicketResponse;
 import com.fuzis.booking.dto.BookResponse;
+import com.fuzis.booking.exception.TicketAlreadyBookedException;
 import com.fuzis.booking.model.Book;
 import com.fuzis.booking.repository.BookRepository;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -50,17 +52,22 @@ public class BookingService {
             );
         }
 
-        Book book = bookRepository.save(
-                ticketResponse.id(),
-                passengerResponse.id(),
-                ticketResponse.basePrice(),
-                null
-        );
+        try {
+            Book book = bookRepository.save(
+                    ticketResponse.id(),
+                    passengerResponse.id(),
+                    ticketResponse.basePrice(),
+                    null
+            );
 
-        return new BookResponse(
-                book.ticketId(),
-                book.passengerId(),
-                book.price()
-        );
+            return new BookResponse(
+                    book.ticketId(),
+                    book.passengerId(),
+                    book.price()
+            );
+
+        } catch (DuplicateKeyException exception) {
+            throw new TicketAlreadyBookedException(ticketId);
+        }
     }
 }

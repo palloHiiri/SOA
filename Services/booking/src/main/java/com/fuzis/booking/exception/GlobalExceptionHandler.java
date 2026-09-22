@@ -13,4 +13,10 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse("TICKET_NOT_FOUND", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
     }
+
+    @ExceptionHandler(TicketAlreadyBookedException.class)
+    public ResponseEntity<ErrorResponse> handleTicketAlreadyBookedException(TicketAlreadyBookedException ex) {
+        ErrorResponse errorResponse = new ErrorResponse("TICKET_ALREADY_BOOKED", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+    }
 }
