@@ -9,8 +9,8 @@ info:
     read-only here and is projected from the latest JSONB CDC snapshot received from
     Inventory.
 servers:
-  - url: http://localhost:4455/api/v1/tickets
-    description: Local Oathkeeper entry point
+  - url: http://157.22.189.188:8082/api/v1/tickets
+    description: Nginx server port
 
 tags:
   - name: Tickets

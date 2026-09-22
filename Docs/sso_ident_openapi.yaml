@@ -4,10 +4,8 @@ info:
   version: 0.0.1
   description: Reactive identity and session service used with Ory Oathkeeper and Ory Keto.
 servers:
-  - url: http://localhost:8080
-    description: Spring application (direct)
-  - url: http://localhost:4455
-    description: Oathkeeper proxy
+  - url: http://157.22.189.188:8082/api/v1/tickets
+    description: Nginx server port
 
 tags:
   - name: Authentication
