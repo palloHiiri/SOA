@@ -8,5 +8,4 @@ public record BookResponse(
         UUID passengerId,
         BigDecimal price
 ) {
-
 }
