@@ -7,6 +7,7 @@ import com.fuzis.booking.dto.BookResponse;
 import com.fuzis.booking.exception.InvalidDiscountException;
 import com.fuzis.booking.exception.NoAvailableSeatException;
 import com.fuzis.booking.exception.TicketAlreadyBookedException;
+import com.fuzis.booking.exception.TicketWithoutPriceException;
 import com.fuzis.booking.model.Book;
 import com.fuzis.booking.repository.BookRepository;
 import org.springframework.dao.DuplicateKeyException;
@@ -48,9 +49,7 @@ public class BookingService {
                 );
 
         if (ticketResponse.basePrice() == null) {
-            throw new IllegalStateException(
-                    "Ticket " + ticketId + " has no price"
-            );
+            throw new TicketWithoutPriceException(ticketId);
         }
 
         try {
@@ -89,7 +88,7 @@ public class BookingService {
         TicketResponse sourceTicket = ticketsClient.getTicket(sourceTicketId);
 
         if (sourceTicket.basePrice() == null) {
-            throw new IllegalStateException("Ticket " + sourceTicketId + " has no price");
+            throw new TicketWithoutPriceException(sourceTicketId);
         }
 
         PassengerResponse passenger =
@@ -137,12 +136,24 @@ public class BookingService {
             throw new NoAvailableSeatException(sourceTicketId);
         }
 
-        Book book = bookRepository.save(
-                newTicket.id(),
-                passenger.id(),
-                newTicket.basePrice(),
-                sourceTicket.id()
-        );
+        Book book;
+        try {
+            book = bookRepository.save(
+                    newTicket.id(),
+                    passenger.id(),
+                    newTicket.basePrice(),
+                    sourceTicket.id()
+            );
+
+        } catch (RuntimeException bookingException) {
+            try {
+                ticketsClient.deleteTicket(newTicket.id());
+            } catch (RuntimeException compensationException) {
+                bookingException.addSuppressed(compensationException);
+            }
+
+            throw bookingException;
+        }
 
         return new BookResponse(
                 book.ticketId(),

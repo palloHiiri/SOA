@@ -65,4 +65,11 @@ public class TicketsClient {
             return Optional.empty();
         }
     }
+
+    public void deleteTicket(Long ticketId) {
+        restClient.delete()
+                .uri("tickets/{ticketId}", ticketId)
+                .retrieve()
+                .toBodilessEntity();
+    }
 }
