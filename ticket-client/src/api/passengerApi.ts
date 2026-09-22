@@ -1,72 +1,47 @@
-import type {
-    Passenger,
-    PassengerCreateRequest
-} from "../types/passenger";
+import type { Passenger, PassengerCreateRequest } from "../types/passenger";
 
-const PASSENGERS_URL =
-    "/api/v1/clients-srv/client/passengers";
+const PASSENGERS_URL = "/api/v1/clients-srv/client/passengers";
 
+async function readError(response: Response): Promise<string> {
+  try {
+    const data = await response.json();
 
-async function readError(
-    response: Response
-): Promise<string> {
-
-    try {
-        const data = await response.json();
-
-        return data.message
-            ?? `Passenger request failed: ${response.status}`;
-
-    } catch {
-        return `Passenger request failed: ${response.status}`;
-    }
+    return data.message ?? `Passenger request failed: ${response.status}`;
+  } catch {
+    return `Passenger request failed: ${response.status}`;
+  }
 }
 
+export async function fetchPassengers(): Promise<Passenger[]> {
+  const response = await fetch(PASSENGERS_URL, {
+    credentials: "include",
+  });
 
-export async function fetchPassengers():
-Promise<Passenger[]> {
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
 
-    const response = await fetch(
-        PASSENGERS_URL,
-        {
-            credentials: "include"
-        }
-    );
-
-    if (!response.ok) {
-        throw new Error(
-            await readError(response)
-        );
-    }
-
-    return response.json();
+  return response.json();
 }
-
 
 export async function createPassenger(
-    request: PassengerCreateRequest
+  request: PassengerCreateRequest,
 ): Promise<Passenger> {
+  const response = await fetch(PASSENGERS_URL, {
+    method: "POST",
 
-    const response = await fetch(
-        PASSENGERS_URL,
-        {
-            method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
 
-            headers: {
-                "Content-Type": "application/json"
-            },
+    credentials: "include",
 
-            credentials: "include",
+    body: JSON.stringify(request),
+  });
 
-            body: JSON.stringify(request)
-        }
-    );
+  if (!response.ok) {
+    throw new Error(await readError(response));
+  }
 
-    if (!response.ok) {
-        throw new Error(
-            await readError(response)
-        );
-    }
-
-    return response.json();
+  return response.json();
 }

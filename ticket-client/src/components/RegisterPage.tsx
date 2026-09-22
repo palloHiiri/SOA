@@ -79,9 +79,8 @@ export function RegisterPage({
         <div className="login-brand">
           <span>Snezhnaya Railway</span>
 
-          <h1>Create account</h1>
+          <h1>Becoming a fatui agent</h1>
 
-          <p>Register to manage railway tickets and bookings.</p>
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
@@ -164,7 +163,7 @@ export function RegisterPage({
             className="auth-switch-button"
             onClick={onLoginClick}
           >
-            Already have an account? Sign in
+            Already a fatui? Come back home
           </button>
         </form>
       </section>

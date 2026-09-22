@@ -58,9 +58,8 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
         <div className="login-brand">
           <span>Snezhnaya Railway</span>
 
-          <h1>Welcome aboard</h1>
+          <h1>Welcome to Snezhnaya</h1>
 
-          <p>Sign in to manage railway tickets and bookings.</p>
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
@@ -71,7 +70,7 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
               type="text"
               value={loginValue}
               autoComplete="username"
-              placeholder="bookingtest22"
+              placeholder="agent name or email"
               onChange={(event) => setLoginValue(event.target.value)}
             />
           </label>
@@ -98,7 +97,7 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
             className="auth-switch-button"
             onClick={onRegisterClick}
           >
-            Don't have an account? Create one
+            First time here? Become a fatui agent
           </button>
         </form>
       </section>

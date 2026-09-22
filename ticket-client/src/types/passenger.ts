@@ -1,36 +1,36 @@
 export interface Passenger {
-    id: string;
-    clientId: string;
+  id: string;
+  clientId: string;
 
-    firstName: string;
-    middleName: string;
-    lastName: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
 
-    documentTypeId: number;
-    documentTypeCode: string;
-    documentTypeName: string;
+  documentTypeId: number;
+  documentTypeCode: string;
+  documentTypeName: string;
 
-    documentSeriesNumber: string;
-    documentNumber: string;
+  documentSeriesNumber: string;
+  documentNumber: string;
 
-    birthDate: string;
+  birthDate: string;
 
-    email: string;
-    phoneNumber: string | null;
+  email: string;
+  phoneNumber: string | null;
 }
 
 export interface PassengerCreateRequest {
-    firstName: string;
-    middleName: string;
-    lastName: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
 
-    documentTypeId: number;
+  documentTypeId: number;
 
-    documentSeriesNumber: string;
-    documentNumber: string;
+  documentSeriesNumber: string;
+  documentNumber: string;
 
-    birthDate: string;
+  birthDate: string;
 
-    email: string;
-    phoneNumber?: string | null;
+  email: string;
+  phoneNumber?: string | null;
 }

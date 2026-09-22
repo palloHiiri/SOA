@@ -137,7 +137,6 @@ export function PassengersPage({
         <div>
           <h2>Passengers</h2>
 
-          <p>Passengers linked to your account</p>
         </div>
 
         <button
@@ -171,7 +170,6 @@ export function PassengersPage({
                   <span>{passenger.documentTypeName}</span>
                 </div>
 
-                <div className="passenger-mark">P</div>
               </div>
 
               <dl className="passenger-info">

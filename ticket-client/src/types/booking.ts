@@ -1,10 +1,10 @@
 export interface BookResponse {
-    ticketId: number;
-    passengerId: string;
-    price: number;
+  ticketId: number;
+  passengerId: string;
+  price: number;
 }
 
 export interface BookingError {
-    code: string;
-    message: string;
+  code: string;
+  message: string;
 }
