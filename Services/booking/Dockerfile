@@ -7,5 +7,5 @@ RUN mvn -q -DskipTests package
 
 FROM tomcat:11-jre21-temurin
 RUN rm -rf /usr/local/tomcat/webapps/ROOT
-COPY --from=build /workspace/target/booking.war /usr/local/tomcat/webapps/booking.war
+COPY --from=build /workspace/target/booking.war /usr/local/tomcat/webapps/ROOT.war
 EXPOSE 8080
