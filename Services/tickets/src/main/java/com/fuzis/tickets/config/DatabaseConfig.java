@@ -47,7 +47,11 @@ public class DatabaseConfig {
     private static int intValue(String key, int fallback) {
         String value = System.getenv(key);
         if (value == null || value.isBlank()) return fallback;
-        try { return Integer.parseInt(value); }
-        catch (NumberFormatException ex) { return fallback; }
+        try {
+            return Integer.parseInt(value);
+        }
+        catch (NumberFormatException ex) {
+            return fallback;
+        }
     }
 }

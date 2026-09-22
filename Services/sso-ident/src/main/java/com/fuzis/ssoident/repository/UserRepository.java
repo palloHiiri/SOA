@@ -10,7 +10,9 @@ import java.util.UUID;
 public class UserRepository {
     private final DatabaseClient db;
 
-    public UserRepository(DatabaseClient db) { this.db = db; }
+    public UserRepository(DatabaseClient db) {
+        this.db = db;
+    }
 
     public Mono<Boolean> existsByLogin(String login) {
         String sql = """
@@ -67,11 +69,11 @@ public class UserRepository {
             ) AS exists
             """;
         return db.sql(sql)
-                .bind("userId", userId)
-                .bind("attributeCode", attributeCode)
-                .bind("value", value)
-                .map((row, meta) -> row.get("exists", Boolean.class))
-                .one();
+        .bind("userId", userId)
+        .bind("attributeCode", attributeCode)
+        .bind("value", value)
+        .map((row, meta) -> row.get("exists", Boolean.class))
+        .one();
     }
 
     public Mono<String> findStatus(UUID userId) {
@@ -104,7 +106,7 @@ public class UserRepository {
             FROM user_attributes ua JOIN attributes a ON a.id = ua.attribute_id
             WHERE ua.user_id = :userId AND a.code = :code
             """).bind("userId", userId).bind("code", code)
-                .map((row, meta) -> row.get("value", String.class)).one();
+        .map((row, meta) -> row.get("value", String.class)).one();
     }
 
     public Mono<java.util.Map<String, String>> findAttributes(UUID userId) {
@@ -113,7 +115,7 @@ public class UserRepository {
             FROM user_attributes ua JOIN attributes a ON a.id = ua.attribute_id
             WHERE ua.user_id = :userId
             """).bind("userId", userId)
-                .map((row, meta) -> java.util.Map.entry(row.get("code", String.class), row.get("value", String.class)))
-                .all().collectMap(java.util.Map.Entry::getKey, java.util.Map.Entry::getValue);
+        .map((row, meta) -> java.util.Map.entry(row.get("code", String.class), row.get("value", String.class)))
+        .all().collectMap(java.util.Map.Entry::getKey, java.util.Map.Entry::getValue);
     }
 }

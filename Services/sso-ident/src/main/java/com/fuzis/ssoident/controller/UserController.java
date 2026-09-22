@@ -25,62 +25,62 @@ public class UserController {
     private final AuthService auth;
 
     public UserController(SessionService sessions, SessionRepository sessionRepository, UserRepository users,
-                          AuditService audit, AuthService auth) {
+    AuditService audit, AuthService auth) {
         this.sessions = sessions;
         this.sessionRepository = sessionRepository;
         this.users = users;
         this.audit = audit;
         this.auth = auth;
     }
-    
+
     @RequestMapping("/api/v1/sso-ident/me")
     public Mono<MeResponse> me(ServerHttpRequest request) {
         return currentSession(request)
-                .switchIfEmpty(Mono.error(new IllegalStateException("No active session")))
-                .flatMap(s -> users.findStatus(s.userId())
-                        .filter("ACTIVE"::equals)
-                        .switchIfEmpty(Mono.error(new IllegalStateException("User is not active")))
-                        .flatMap(status -> sessionRepository.touch(s.sessionId())
-                                .then(users.findAttributes(s.userId()))
-                                .map(attrs -> new MeResponse(
-                                        s.userId(),
-                                        s.userId().toString(),
-                                        status,
-                                        attrs
-                                ))));
-}
+        .switchIfEmpty(Mono.error(new IllegalStateException("No active session")))
+        .flatMap(s -> users.findStatus(s.userId())
+        .filter("ACTIVE"::equals)
+        .switchIfEmpty(Mono.error(new IllegalStateException("User is not active")))
+        .flatMap(status -> sessionRepository.touch(s.sessionId())
+        .then(users.findAttributes(s.userId()))
+        .map(attrs -> new MeResponse(
+        s.userId(),
+        s.userId().toString(),
+        status,
+        attrs
+        ))));
+    }
 
     @PostMapping("/api/v1/sso-ident/me/password")
     @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     public Mono<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request,
-                                     ServerHttpRequest http) {
+    ServerHttpRequest http) {
         return currentSession(http)
-                .switchIfEmpty(Mono.error(new IllegalStateException("No active session")))
-                .flatMap(s -> auth.changePassword(
-                        s.userId(), request.currentPassword(), request.newPassword(),
-                        remoteIp(http), userAgent(http)));
+        .switchIfEmpty(Mono.error(new IllegalStateException("No active session")))
+        .flatMap(s -> auth.changePassword(
+        s.userId(), request.currentPassword(), request.newPassword(),
+        remoteIp(http), userAgent(http)));
     }
 
     @PostMapping("/api/v1/sso-ident/me/profile")
     public Mono<MeResponse> updateProfile(@Valid @RequestBody ProfileUpdateRequest request,
-                                          ServerHttpRequest http) {
+    ServerHttpRequest http) {
         return currentSession(http)
-                .switchIfEmpty(Mono.error(new IllegalStateException("No active session")))
-                .flatMap(s -> auth.updateProfile(
-                        s.userId(), request, remoteIp(http), userAgent(http)));
+        .switchIfEmpty(Mono.error(new IllegalStateException("No active session")))
+        .flatMap(s -> auth.updateProfile(
+        s.userId(), request, remoteIp(http), userAgent(http)));
     }
 
     @PostMapping("/api/v1/sso-ident/auth/logout")
     public Mono<Void> logout(ServerHttpRequest request, ServerHttpResponse response) {
         return currentSession(request)
-                .flatMap(s -> sessions.revoke(s.token())
-                        .then(sessionRepository.revoke(s.sessionId(), s.userId()))
-                        .then(audit.write(s.userId(), "LOGOUT", s.userId(), remoteIp(request), userAgent(request), true,
-                                Map.of("sessionId", s.sessionId().toString())))
-                        .then())
-                .then(Mono.fromRunnable(() -> response.addCookie(
-                        sessions.cookie("", java.time.Duration.ZERO)
-                )));
+        .flatMap(s -> sessions.revoke(s.token())
+        .then(sessionRepository.revoke(s.sessionId(), s.userId()))
+        .then(audit.write(s.userId(), "LOGOUT", s.userId(), remoteIp(request), userAgent(request), true,
+        Map.of("sessionId", s.sessionId().toString())))
+        .then())
+        .then(Mono.fromRunnable(() -> response.addCookie(
+        sessions.cookie("", java.time.Duration.ZERO)
+        )));
     }
 
     private Mono<SessionService.SessionData> currentSession(ServerHttpRequest request) {
@@ -92,5 +92,7 @@ public class UserController {
         var a = request.getRemoteAddress();
         return a == null || a.getAddress() == null ? null : a.getAddress().getHostAddress();
     }
-    private static String userAgent(ServerHttpRequest request) { return request.getHeaders().getFirst("User-Agent"); }
+    private static String userAgent(ServerHttpRequest request) {
+        return request.getHeaders().getFirst("User-Agent");
+    }
 }

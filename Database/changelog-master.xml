@@ -5,15 +5,10 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
                             https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
-    <!--
-      This is the repository-level Liquibase manifest. It documents the
-      backend changelogs that belong to this project. Because every backend
-      has its own database, Docker/liquibase/migrate.sh is the execution
-      entry point and runs each backend changelog against its own database.
-    -->
     <include file="sso-ident/changelog-master.xml" relativeToChangelogFile="true"/>
     <include file="clients/changelog-master.xml" relativeToChangelogFile="true"/>
     <include file="inventory/changelog-master.xml" relativeToChangelogFile="true"/>
     <include file="tickets/changelog-master.xml" relativeToChangelogFile="true"/>
+    <include file="booking/changelog-master.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

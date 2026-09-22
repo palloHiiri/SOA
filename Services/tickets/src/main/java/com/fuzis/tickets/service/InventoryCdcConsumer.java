@@ -66,7 +66,7 @@ public class InventoryCdcConsumer {
 
     private void consumeLoop() {
         try (KafkaConsumer<String, String> kafka =
-                     new KafkaConsumer<>(kafkaConfig.consumerProperties())) {
+        new KafkaConsumer<>(kafkaConfig.consumerProperties())) {
             consumer = kafka;
             kafka.subscribe(List.of(kafkaConfig.topic()));
 
@@ -75,43 +75,46 @@ public class InventoryCdcConsumer {
             while (running) {
                 try {
                     for (ConsumerRecord<String, String> record :
-                            kafka.poll(Duration.ofMillis(kafkaConfig.pollTimeoutMs()))) {
+                    kafka.poll(Duration.ofMillis(kafkaConfig.pollTimeoutMs()))) {
 
                         if (record.value() == null) {
-                            // Tombstones do not carry an Inventory snapshot, but their offset
-                            // still has to be advanced or the same tombstone would be retried forever.
+
                             kafka.commitSync();
                             continue;
                         }
 
                         process(record.value());
 
-                        // Commit only after the corresponding DB write succeeded.
                         kafka.commitSync();
                     }
-                } catch (org.apache.kafka.common.errors.WakeupException e) {
+                }
+                catch (org.apache.kafka.common.errors.WakeupException e) {
                     if (running) {
                         throw e;
                     }
-                } catch (Exception e) {
+                }
+                catch (Exception e) {
                     LOG.log(
-                            Level.SEVERE,
-                            "Failed to process Inventory CDC record; offset will be retried",
-                            e);
+                    Level.SEVERE,
+                    "Failed to process Inventory CDC record; offset will be retried",
+                    e);
 
                     try {
                         Thread.sleep(1000L);
-                    } catch (InterruptedException interrupted) {
+                    }
+                    catch (InterruptedException interrupted) {
                         Thread.currentThread().interrupt();
                         break;
                     }
                 }
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             if (running) {
                 LOG.log(Level.SEVERE, "Inventory CDC consumer stopped unexpectedly", e);
             }
-        } finally {
+        }
+        finally {
             consumer = null;
         }
     }
@@ -133,8 +136,8 @@ public class InventoryCdcConsumer {
         }
 
         String data = dataValue.getValueType() == JsonValue.ValueType.STRING
-                ? ((JsonString) dataValue).getString()
-                : dataValue.toString();
+        ? ((JsonString) dataValue).getString()
+        : dataValue.toString();
 
         JsonObject dataJson = object(data);
         JsonValue dataObject = dataJson.get("id");

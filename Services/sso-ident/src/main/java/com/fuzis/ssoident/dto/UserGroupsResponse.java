@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 public record UserGroupsResponse(
-        UUID userId,
-        List<GroupResponse> groups
-) {}
+UUID userId,
+List<GroupResponse> groups
+) {
+}

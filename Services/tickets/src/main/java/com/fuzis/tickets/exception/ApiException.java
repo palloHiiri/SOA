@@ -10,8 +10,12 @@ public class ApiException extends RuntimeException {
         this.code = code;
     }
 
-    public int getStatus() { return status; }
-    public String getCode() { return code; }
+    public int getStatus() {
+        return status;
+    }
+    public String getCode() {
+        return code;
+    }
 
     public static ApiException badRequest(String message) {
         return new ApiException(400, "BAD_REQUEST", message);

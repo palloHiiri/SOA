@@ -23,8 +23,8 @@ public class ClientRepository {
 
     public Mono<UUID> findClientIdByUserId(UUID userId) {
         return db.sql("SELECT id FROM clients WHERE user_id = :userId")
-                .bind("userId", userId)
-                .map((row, meta) -> row.get("id", UUID.class)).one();
+        .bind("userId", userId)
+        .map((row, meta) -> row.get("id", UUID.class)).one();
     }
 
     public Mono<Long> updateProfile(UUID userId, ClientProfileUpdateRequest request) {
@@ -38,10 +38,10 @@ public class ClientRepository {
             WHERE cp.client_id = c.id
               AND c.user_id = :userId
             """)
-                .bind("userId", userId)
-                .bind("phoneNumber", request.phoneNumber() == null ? "" : request.phoneNumber().trim())
-                .bind("extraFields", extraFields)
-                .fetch().rowsUpdated();
+        .bind("userId", userId)
+        .bind("phoneNumber", request.phoneNumber() == null ? "" : request.phoneNumber().trim())
+        .bind("extraFields", extraFields)
+        .fetch().rowsUpdated();
     }
 
     public Mono<ClientProfileResponse> findProfileByUserId(UUID userId) {
@@ -53,22 +53,27 @@ public class ClientRepository {
             JOIN client_profiles cp ON cp.client_id = c.id
             WHERE c.user_id = :userId
             """).bind("userId", userId)
-                .map((row, meta) -> {
-                    String extra = row.get("extra_fields", String.class);
-                    JsonNode json;
-                    try { json = mapper.readTree(extra == null ? "{}" : extra); }
-                    catch (Exception e) { throw new IllegalStateException("Invalid extra_fields JSON", e); }
-                    return new ClientProfileResponse(
-                            row.get("client_id", UUID.class),
-                            row.get("user_id", UUID.class),
-                            row.get("email", String.class),
-                            row.get("first_name", String.class),
-                            row.get("last_name", String.class),
-                            row.get("username", String.class),
-                            row.get("phone_number", String.class),
-                            json,
-                            row.get("updated_at", OffsetDateTime.class)
-                    );
-                }).one();
+        .map((row, meta) -> {
+            String extra = row.get("extra_fields", String.class);
+            JsonNode json;
+            try {
+                json = mapper.readTree(extra == null ? "{}" : extra);
+            }
+            catch (Exception e) {
+                throw new IllegalStateException("Invalid extra_fields JSON", e);
+            }
+            return new ClientProfileResponse(
+            row.get("client_id", UUID.class),
+            row.get("user_id", UUID.class),
+            row.get("email", String.class),
+            row.get("first_name", String.class),
+            row.get("last_name", String.class),
+            row.get("username", String.class),
+            row.get("phone_number", String.class),
+            json,
+            row.get("updated_at", OffsetDateTime.class)
+            );
+        }
+        ).one();
     }
 }

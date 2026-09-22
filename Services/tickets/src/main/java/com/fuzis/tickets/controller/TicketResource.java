@@ -38,96 +38,118 @@ public class TicketResource {
     private final TicketService service;
 
     @Inject
-    public TicketResource(TicketService service) { this.service = service; }
+    public TicketResource(TicketService service) {
+        this.service = service;
+    }
 
     @GET
-public PageResponse<TicketResponse> list(
-        @DefaultValue("1") @QueryParam("page") int page,
-        @DefaultValue("20") @QueryParam("size") int size,
-        @QueryParam("sort") List<String> sort,
-        @QueryParam("id") Long id,
-        @QueryParam("name") String name,
-        @QueryParam("creationDate") String creationDate,
-        @QueryParam("venueId") Long venueId,
-        @QueryParam("trainSetId") Integer trainSetId,
-        @QueryParam("carriageNumber") String carriageNumber,
-        @QueryParam("seatNumber") String seatNumber,
-        @QueryParam("refundable") Boolean refundable,
-        @QueryParam("type") TicketType type,
-        @QueryParam("basePrice") BigDecimal basePrice,
-        @QueryParam("discount") Integer discount) {
+    public PageResponse<TicketResponse> list(
+    @DefaultValue("1")
+    @QueryParam("page")
+    int page,
+    @DefaultValue("20")
+    @QueryParam("size")
+    int size,
+    @QueryParam("sort") List<String> sort,
+    @QueryParam("id") Long id,
+    @QueryParam("name") String name,
+    @QueryParam("creationDate") String creationDate,
+    @QueryParam("venueId") Long venueId,
+    @QueryParam("trainSetId") Integer trainSetId,
+    @QueryParam("carriageNumber") String carriageNumber,
+    @QueryParam("seatNumber") String seatNumber,
+    @QueryParam("refundable") Boolean refundable,
+    @QueryParam("type") TicketType type,
+    @QueryParam("basePrice") BigDecimal basePrice,
+    @QueryParam("discount") Integer discount) {
 
-    return service.list(
-            page,
-            size,
-            sort,
-            id,
-            name,
-            parseCreationDate(creationDate),
-            venueId,
-            trainSetId,
-            carriageNumber,
-            seatNumber,
-            refundable,
-            type,
-            basePrice,
-            discount
-    );
-}
-    private LocalDate parseCreationDate(String value) {
-    if (value == null || value.isBlank()) {
-        return null;
-    }
-
-    try {
-        return LocalDate.parse(value);
-    } catch (java.time.format.DateTimeParseException e) {
-        throw new jakarta.ws.rs.BadRequestException(
-                "Query parameter 'creationDate' must be a valid ISO-8601 date"
+        return service.list(
+        page,
+        size,
+        sort,
+        id,
+        name,
+        parseCreationDate(creationDate),
+        venueId,
+        trainSetId,
+        carriageNumber,
+        seatNumber,
+        refundable,
+        type,
+        basePrice,
+        discount
         );
     }
-}
+    private LocalDate parseCreationDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        try {
+            return LocalDate.parse(value);
+        }
+        catch (java.time.format.DateTimeParseException e) {
+            throw new jakarta.ws.rs.BadRequestException(
+            "Query parameter 'creationDate' must be a valid ISO-8601 date"
+            );
+        }
+    }
 
     @POST
     public Response create(@Valid TicketCreateRequest request, @Context UriInfo uriInfo) {
-        TicketResponse created=service.create(request);
-        URI location=uriInfo.getAbsolutePathBuilder().path(Long.toString(created.getId())).build();
+        TicketResponse created = service.create(request);
+        URI location = uriInfo.getAbsolutePathBuilder().path(Long.toString(created.getId())).build();
         return Response.created(location).entity(created).build();
     }
 
     @GET
     @Path("latest")
-    public TicketResponse latest() { return service.latest(); }
+    public TicketResponse latest() {
+        return service.latest();
+    }
 
     @GET
     @Path("discount/average")
-    public BigDecimal averageDiscount() { return service.averageDiscount(); }
+    public BigDecimal averageDiscount() {
+        return service.averageDiscount();
+    }
 
     @GET
     @Path("by-discount-below/{discount}")
     public PageResponse<TicketResponse> belowDiscount(
-            @PathParam("discount") int discount,
-            @DefaultValue("1") @QueryParam("page") int page,
-            @DefaultValue("20") @QueryParam("size") int size,
-            @QueryParam("sort") List<String> sort,
-            @QueryParam("venueId") Long venueId,
-            @QueryParam("trainSetId") Integer trainSetId,
-            @QueryParam("carriageNumber") String carriageNumber,
-            @QueryParam("seatNumber") String seatNumber,
-            @QueryParam("refundable") Boolean refundable,
-            @QueryParam("type") TicketType type) {
-        return service.belowDiscount(discount,page,size,sort,venueId,trainSetId,carriageNumber,seatNumber,refundable,type);
+    @PathParam("discount") int discount,
+    @DefaultValue("1")
+    @QueryParam("page")
+    int page,
+    @DefaultValue("20")
+    @QueryParam("size")
+    int size,
+    @QueryParam("sort") List<String> sort,
+    @QueryParam("venueId") Long venueId,
+    @QueryParam("trainSetId") Integer trainSetId,
+    @QueryParam("carriageNumber") String carriageNumber,
+    @QueryParam("seatNumber") String seatNumber,
+    @QueryParam("refundable") Boolean refundable,
+    @QueryParam("type") TicketType type) {
+        return service.belowDiscount(discount, page, size, sort, venueId, trainSetId, carriageNumber, seatNumber, refundable, type);
     }
 
     @GET
     @Path("{id}")
-    public TicketResponse get(@PathParam("id") long id) { return service.get(id); }
+    public TicketResponse get(@PathParam("id") long id) {
+        return service.get(id);
+    }
 
     @PUT
     @Path("{id}")
-    public TicketResponse update(@PathParam("id") long id,@Valid TicketUpdateRequest request) { return service.update(id,request); }
+    public TicketResponse update(@PathParam("id") long id, @Valid TicketUpdateRequest request) {
+        return service.update(id, request);
+    }
 
     @DELETE
     @Path("{id}")
-    public Response delete(@PathParam("id") long id) { service.delete(id); return Response.noContent().build(); }
+    public Response delete(@PathParam("id") long id) {
+        service.delete(id);
+        return Response.noContent().build();
+    }
 }

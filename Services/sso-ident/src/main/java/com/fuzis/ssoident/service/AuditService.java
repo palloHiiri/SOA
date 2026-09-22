@@ -20,11 +20,12 @@ public class AuditService {
     }
 
     public Mono<Void> write(UUID userId, String action, UUID actorUserId, String ip,
-                            String userAgent, boolean success, Map<String, Object> metadata) {
+    String userAgent, boolean success, Map<String, Object> metadata) {
         try {
             return history.write(userId, action, actorUserId, ip, userAgent, success,
-                    mapper.writeValueAsString(metadata == null ? Map.of() : metadata));
-        } catch (JsonProcessingException e) {
+            mapper.writeValueAsString(metadata == null ? Map.of() : metadata));
+        }
+        catch (JsonProcessingException e) {
             return Mono.error(e);
         }
     }

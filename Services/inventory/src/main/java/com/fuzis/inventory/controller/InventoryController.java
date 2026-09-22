@@ -28,8 +28,10 @@ public class InventoryController {
 
     @PostMapping("/train-sets/{trainSetId}/lifecycle")
     public TrainSetLifecycleResponse changeLifecycle(
-            @PathVariable int trainSetId,
-            @Valid @RequestBody TrainSetLifecycleRequest request) {
+    @PathVariable int trainSetId,
+    @Valid
+    @RequestBody
+    TrainSetLifecycleRequest request) {
         return service.changeLifecycle(trainSetId, request);
     }
 

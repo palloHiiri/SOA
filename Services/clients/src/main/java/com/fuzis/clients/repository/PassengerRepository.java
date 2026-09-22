@@ -13,18 +13,22 @@ import java.util.UUID;
 public class PassengerRepository {
     private final DatabaseClient db;
 
-    public PassengerRepository(DatabaseClient db) { this.db = db; }
+    public PassengerRepository(DatabaseClient db) {
+        this.db = db;
+    }
 
-    private static String normalizedMiddleName(String value) { return value == null ? "" : value.trim(); }
+    private static String normalizedMiddleName(String value) {
+        return value == null ? "" : value.trim();
+    }
 
     public Flux<PassengerResponse> findAllByClientId(UUID clientId) {
         return baseQuery("WHERE p.client_id = :clientId ORDER BY p.last_name, p.first_name, p.id")
-                .bind("clientId", clientId).map(this::map).all();
+        .bind("clientId", clientId).map(this::map).all();
     }
 
     public Mono<PassengerResponse> findByIdAndClientId(UUID id, UUID clientId) {
         return baseQuery("WHERE p.id = :id AND p.client_id = :clientId")
-                .bind("id", id).bind("clientId", clientId).map(this::map).one();
+        .bind("id", id).bind("clientId", clientId).map(this::map).one();
     }
 
     public Mono<UUID> create(UUID clientId, PassengerCreateRequest r) {
@@ -36,17 +40,17 @@ public class PassengerRepository {
             ) VALUES (:id, :clientId, :firstName, :middleName, :lastName, :documentTypeId,
                       :seriesNumber, :documentNumber, :birthDate, :email, NULLIF(:phoneNumber, ''))
             """)
-                .bind("id", id).bind("clientId", clientId)
-                .bind("firstName", r.firstName().trim())
-                .bind("middleName", normalizedMiddleName(r.middleName()))
-                .bind("lastName", r.lastName().trim())
-                .bind("documentTypeId", r.documentTypeId())
-                .bind("seriesNumber", r.documentSeriesNumber().trim())
-                .bind("documentNumber", r.documentNumber().trim())
-                .bind("birthDate", r.birthDate())
-                .bind("email", r.email().trim().toLowerCase(java.util.Locale.ROOT))
-                .bind("phoneNumber", r.phoneNumber() == null || r.phoneNumber().isBlank() ? "" : r.phoneNumber().trim())
-                .fetch().rowsUpdated().thenReturn(id);
+        .bind("id", id).bind("clientId", clientId)
+        .bind("firstName", r.firstName().trim())
+        .bind("middleName", normalizedMiddleName(r.middleName()))
+        .bind("lastName", r.lastName().trim())
+        .bind("documentTypeId", r.documentTypeId())
+        .bind("seriesNumber", r.documentSeriesNumber().trim())
+        .bind("documentNumber", r.documentNumber().trim())
+        .bind("birthDate", r.birthDate())
+        .bind("email", r.email().trim().toLowerCase(java.util.Locale.ROOT))
+        .bind("phoneNumber", r.phoneNumber() == null || r.phoneNumber().isBlank() ? "" : r.phoneNumber().trim())
+        .fetch().rowsUpdated().thenReturn(id);
     }
 
     public Mono<Long> update(UUID id, UUID clientId, PassengerCreateRequest r) {
@@ -58,21 +62,21 @@ public class PassengerRepository {
                 phone_number = NULLIF(:phoneNumber, ''), updated_at = CURRENT_TIMESTAMP
             WHERE id = :id AND client_id = :clientId
             """).bind("id", id).bind("clientId", clientId)
-                .bind("firstName", r.firstName().trim())
-                .bind("middleName", normalizedMiddleName(r.middleName()))
-                .bind("lastName", r.lastName().trim())
-                .bind("documentTypeId", r.documentTypeId())
-                .bind("seriesNumber", r.documentSeriesNumber().trim())
-                .bind("documentNumber", r.documentNumber().trim())
-                .bind("birthDate", r.birthDate())
-                .bind("email", r.email().trim().toLowerCase(java.util.Locale.ROOT))
-                .bind("phoneNumber", r.phoneNumber() == null || r.phoneNumber().isBlank() ? "" : r.phoneNumber().trim())
-                .fetch().rowsUpdated();
+        .bind("firstName", r.firstName().trim())
+        .bind("middleName", normalizedMiddleName(r.middleName()))
+        .bind("lastName", r.lastName().trim())
+        .bind("documentTypeId", r.documentTypeId())
+        .bind("seriesNumber", r.documentSeriesNumber().trim())
+        .bind("documentNumber", r.documentNumber().trim())
+        .bind("birthDate", r.birthDate())
+        .bind("email", r.email().trim().toLowerCase(java.util.Locale.ROOT))
+        .bind("phoneNumber", r.phoneNumber() == null || r.phoneNumber().isBlank() ? "" : r.phoneNumber().trim())
+        .fetch().rowsUpdated();
     }
 
     public Mono<Long> delete(UUID id, UUID clientId) {
         return db.sql("DELETE FROM client_passengers WHERE id = :id AND client_id = :clientId")
-                .bind("id", id).bind("clientId", clientId).fetch().rowsUpdated();
+        .bind("id", id).bind("clientId", clientId).fetch().rowsUpdated();
     }
 
     private DatabaseClient.GenericExecuteSpec baseQuery(String suffix) {
@@ -87,13 +91,13 @@ public class PassengerRepository {
 
     private PassengerResponse map(io.r2dbc.spi.Row row, io.r2dbc.spi.RowMetadata meta) {
         return new PassengerResponse(
-                row.get("id", UUID.class), row.get("client_id", UUID.class),
-                row.get("first_name", String.class), row.get("middle_name", String.class),
-                row.get("last_name", String.class), row.get("document_type_id", Integer.class),
-                row.get("document_type_code", String.class), row.get("document_type_name", String.class),
-                row.get("document_series_number", String.class), row.get("document_number", String.class),
-                row.get("birth_date", java.time.LocalDate.class), row.get("email", String.class),
-                row.get("phone_number", String.class)
+        row.get("id", UUID.class), row.get("client_id", UUID.class),
+        row.get("first_name", String.class), row.get("middle_name", String.class),
+        row.get("last_name", String.class), row.get("document_type_id", Integer.class),
+        row.get("document_type_code", String.class), row.get("document_type_name", String.class),
+        row.get("document_series_number", String.class), row.get("document_number", String.class),
+        row.get("birth_date", java.time.LocalDate.class), row.get("email", String.class),
+        row.get("phone_number", String.class)
         );
     }
 }

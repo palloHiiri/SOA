@@ -19,11 +19,11 @@ public class KafkaEventPublisher {
     private final String verificationEmailTopic;
 
     public KafkaEventPublisher(
-            KafkaTemplate<String, String> kafkaTemplate,
-            ObjectMapper mapper,
-            @Value("${sso.kafka.user-registration-topic}") String registrationTopic,
-            @Value("${sso.kafka.verification-sms-topic}") String verificationSmsTopic,
-            @Value("${sso.kafka.verification-email-topic}") String verificationEmailTopic) {
+    KafkaTemplate<String, String> kafkaTemplate,
+    ObjectMapper mapper,
+    @Value("${sso.kafka.user-registration-topic}") String registrationTopic,
+    @Value("${sso.kafka.verification-sms-topic}") String verificationSmsTopic,
+    @Value("${sso.kafka.verification-email-topic}") String verificationEmailTopic) {
         this.kafkaTemplate = kafkaTemplate;
         this.mapper = mapper;
         this.registrationTopic = registrationTopic;
@@ -46,14 +46,15 @@ public class KafkaEventPublisher {
             case "sms" -> verificationSmsTopic;
             case "email" -> verificationEmailTopic;
             default -> throw new IllegalArgumentException("Unsupported verification channel: " + channel);
-        };
+        }
+        ;
         return publish(topic, payload);
     }
 
     private Mono<Void> publish(String topic, Object payload) {
         return Mono.fromCallable(() -> mapper.writeValueAsString(payload))
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(json -> Mono.fromFuture(kafkaTemplate.send(topic, json)))
-                .then();
+        .subscribeOn(Schedulers.boundedElastic())
+        .flatMap(json -> Mono.fromFuture(kafkaTemplate.send(topic, json)))
+        .then();
     }
 }

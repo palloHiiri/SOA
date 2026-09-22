@@ -18,7 +18,9 @@ import java.util.UUID;
 @RequestMapping("/api/v1/clients-srv/client")
 public class ClientController {
     private final ClientService service;
-    public ClientController(ClientService service) { this.service = service; }
+    public ClientController(ClientService service) {
+        this.service = service;
+    }
 
     @GetMapping("/profile")
     public Mono<ClientProfileResponse> profile(@RequestHeader("X-User-Id") String userId) {
@@ -27,13 +29,19 @@ public class ClientController {
 
     @PutMapping("/profile")
     public Mono<ClientProfileResponse> updateProfile(
-            @RequestHeader("X-User-Id") String userId,
-            @Valid @RequestBody ClientProfileUpdateRequest request) {
+    @RequestHeader("X-User-Id") String userId,
+    @Valid
+    @RequestBody
+    ClientProfileUpdateRequest request) {
         return service.updateProfile(parseUserId(userId), request);
     }
 
     static UUID parseUserId(String value) {
-        try { return UUID.fromString(value); }
-        catch (Exception e) { throw new IllegalArgumentException("Invalid X-User-Id"); }
+        try {
+            return UUID.fromString(value);
+        }
+        catch (Exception e) {
+            throw new IllegalArgumentException("Invalid X-User-Id");
+        }
     }
 }

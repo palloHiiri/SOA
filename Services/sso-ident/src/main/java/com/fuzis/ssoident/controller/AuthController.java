@@ -35,49 +35,51 @@ public class AuthController {
 
     @PostMapping("/login")
     public Mono<LoginResponse> login(@Valid @RequestBody LoginRequest request,
-                                     ServerHttpRequest http,
-                                     ServerHttpResponse response) {
+    ServerHttpRequest http,
+    ServerHttpResponse response) {
         return auth.login(request, remoteIp(http), userAgent(http))
-                .map(result -> {
-                    if (result.sessionToken() != null) {
-                        response.addCookie(sessions.cookie(result.sessionToken(), result.maxAge()));
-                    }
-                    return result.response();
-                });
+        .map(result -> {
+            if (result.sessionToken() != null) {
+                response.addCookie(sessions.cookie(result.sessionToken(), result.maxAge()));
+            }
+            return result.response();
+        }
+        );
     }
 
     @PostMapping(value = "/password/reset")
     public Mono<Map<String, String>> requestPasswordReset(@Valid @RequestBody PasswordResetRequest request,
-                                                           ServerHttpRequest http) {
+    ServerHttpRequest http) {
         return auth.requestPasswordReset(request.email(), remoteIp(http), userAgent(http))
-                .thenReturn(Map.of("status", "OK"));
+        .thenReturn(Map.of("status", "OK"));
     }
 
     @PostMapping("/password/reset/confirm")
     public Mono<Void> confirmPasswordReset(@Valid @RequestBody PasswordResetConfirmRequest request,
-                                            ServerHttpRequest http) {
+    ServerHttpRequest http) {
         return auth.confirmPasswordReset(
-                request.code(), request.newPassword(), remoteIp(http), userAgent(http));
+        request.code(), request.newPassword(), remoteIp(http), userAgent(http));
     }
 
     @PostMapping("/mfa/email/request")
     @ResponseStatus(HttpStatus.ACCEPTED)
     public Mono<VerificationResponse> requestMfa(@RequestBody Map<String, String> body,
-                                                  ServerHttpRequest http) {
+    ServerHttpRequest http) {
         return auth.requestMfa(UUID.fromString(body.get("challengeId")), remoteIp(http), userAgent(http))
-                .map(r -> new VerificationResponse(r.challengeId(), r.expiresAt()));
+        .map(r -> new VerificationResponse(r.challengeId(), r.expiresAt()));
     }
 
     @PostMapping("/mfa/email/verify")
     public Mono<Void> verifyMfa(@Valid @RequestBody MfaCodeVerifyRequest request,
-                                ServerHttpRequest http,
-                                ServerHttpResponse response) {
+    ServerHttpRequest http,
+    ServerHttpResponse response) {
         return auth.verifyMfa(request.challengeId(), request.code(), remoteIp(http), userAgent(http))
-                .doOnNext(result -> {
-                    if (result.sessionToken() != null) {
-                        response.addCookie(sessions.cookie(result.sessionToken(), result.maxAge()));
-                    }
-                }).then();
+        .doOnNext(result -> {
+            if (result.sessionToken() != null) {
+                response.addCookie(sessions.cookie(result.sessionToken(), result.maxAge()));
+            }
+        }
+        ).then();
     }
 
     private static String remoteIp(ServerHttpRequest request) {

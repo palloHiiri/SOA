@@ -22,12 +22,12 @@ public class GenericExceptionMapper implements ExceptionMapper<Throwable> {
     public Response toResponse(Throwable exception) {
         LOG.log(Level.SEVERE, "Unhandled tickets service exception", exception);
         return Response.serverError()
-                .type("application/json")
-                .entity(new ErrorResponse(
-                        "INTERNAL_ERROR",
-                        "Internal server error",
-                        OffsetDateTime.now(),
-                        uriInfo.getRequestUri().getPath()))
-                .build();
+        .type("application/json")
+        .entity(new ErrorResponse(
+        "INTERNAL_ERROR",
+        "Internal server error",
+        OffsetDateTime.now(),
+        uriInfo.getRequestUri().getPath()))
+        .build();
     }
 }

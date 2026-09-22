@@ -20,16 +20,16 @@ public class InventoryRepository {
 
     public TrainSetResponse importTrainSet(JsonNode payload) {
         return jdbc.queryForObject(
-                "SELECT * FROM inventory_import_train_set(?::jsonb)",
-                (rs, rowNum) -> mapTrainSet(rs),
-                payload.toString()
+        "SELECT * FROM inventory_import_train_set(?::jsonb)",
+        (rs, rowNum) -> mapTrainSet(rs),
+        payload.toString()
         );
     }
 
     public boolean lifecycleStatusExists(String status) {
         return Boolean.TRUE.equals(jdbc.queryForObject(
-                "SELECT EXISTS (SELECT 1 FROM train_set_lifecycle_statuses WHERE code = ?)",
-                Boolean.class, status));
+        "SELECT EXISTS (SELECT 1 FROM train_set_lifecycle_statuses WHERE code = ?)",
+        Boolean.class, status));
     }
 
     public TrainSetLifecycleResponse changeLifecycle(int trainSetId, String status) {
@@ -41,27 +41,27 @@ public class InventoryRepository {
                   AND status.code = ?
                 RETURNING ts.id, status.code
                 """, (rs, rowNum) -> new TrainSetLifecycleResponse(
-                        rs.getInt("id"), rs.getString("code")
-                ), trainSetId, status);
+        rs.getInt("id"), rs.getString("code")
+        ), trainSetId, status);
     }
 
     public boolean existsTrainSet(int trainSetId) {
         return Boolean.TRUE.equals(jdbc.queryForObject(
-                "SELECT EXISTS (SELECT 1 FROM train_sets WHERE id = ?)",
-                Boolean.class, trainSetId));
+        "SELECT EXISTS (SELECT 1 FROM train_sets WHERE id = ?)",
+        Boolean.class, trainSetId));
     }
 
     private static TrainSetResponse mapTrainSet(ResultSet rs) throws SQLException {
         return new TrainSetResponse(
-                rs.getInt("id"),
-                rs.getString("code"),
-                rs.getInt("build_number"),
-                rs.getString("name"),
-                rs.getString("technical_name"),
-                rs.getString("description"),
-                rs.getInt("train_set_lifecycle_status_id"),
-                rs.getObject("created_at", OffsetDateTime.class),
-                rs.getObject("updated_at", OffsetDateTime.class)
+        rs.getInt("id"),
+        rs.getString("code"),
+        rs.getInt("build_number"),
+        rs.getString("name"),
+        rs.getString("technical_name"),
+        rs.getString("description"),
+        rs.getInt("train_set_lifecycle_status_id"),
+        rs.getObject("created_at", OffsetDateTime.class),
+        rs.getObject("updated_at", OffsetDateTime.class)
         );
     }
 }

@@ -23,9 +23,10 @@ public class VenueRepository {
         this.dataSource = dataSource;
     }
 
-
     public VenueRecord findById(long id) throws SQLException {
-        try (Connection c = dataSource.getConnection()) { return findById(c, id, false); }
+        try (Connection c = dataSource.getConnection()) {
+            return findById(c, id, false);
+        }
     }
 
     public VenueRecord findById(Connection c, long id, boolean forUpdate) throws SQLException {
@@ -38,7 +39,9 @@ public class VenueRepository {
         }
     }
 
-    public VenueRecord findForUpdate(Connection c, long id) throws SQLException { return findById(c, id, true); }
+    public VenueRecord findForUpdate(Connection c, long id) throws SQLException {
+        return findById(c, id, true);
+    }
 
     public long insert(Connection c, String name, int trainSetId) throws SQLException {
         String sql = "INSERT INTO venues (name, train_set_id) VALUES (?, ?) RETURNING id";
@@ -80,19 +83,26 @@ public class VenueRepository {
         appendFilters(sql, params, name, trainSetId, id);
         try (PreparedStatement ps = c.prepareStatement(sql.toString())) {
             Sql.bind(ps, params);
-            try (ResultSet rs = ps.executeQuery()) { rs.next(); return rs.getLong(1); }
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getLong(1);
+            }
         }
     }
 
     public List<VenueResponse> findPage(int page, int size, long offset, String name, Integer trainSetId, Long id,
-                                        List<SortPart> sorts) throws SQLException {
+    List<SortPart> sorts) throws SQLException {
         StringBuilder sql = new StringBuilder("SELECT id, name, train_set_id FROM venues WHERE 1=1");
         List<Object> params = new ArrayList<>();
         appendFilters(sql, params, name, trainSetId, id);
-        sql.append(" ORDER BY ").append(sorts.stream().map(s -> s.expression()+" "+s.direction()).reduce((a,b)->a+", "+b).orElse("id ASC"));
+        sql.append(" ORDER BY ").append(sorts.stream().map(s -> s.expression()+" "+s.direction()).reduce((a, b)->a+", "+b).orElse("id ASC"));
         sql.append(" LIMIT ? OFFSET ?");
-        params.add(size); params.add(offset);
-        try (Connection c = dataSource.getConnection(); PreparedStatement ps = c.prepareStatement(sql.toString())) {
+        params.add(size);
+        params.add(offset);
+        try (
+            Connection c = dataSource.getConnection();
+            PreparedStatement ps = c.prepareStatement(sql.toString())
+        ) {
             Sql.bind(ps, params);
             try (ResultSet rs = ps.executeQuery()) {
                 List<VenueResponse> result = new ArrayList<>();
@@ -103,9 +113,18 @@ public class VenueRepository {
     }
 
     private static void appendFilters(StringBuilder sql, List<Object> params, String name, Integer trainSetId, Long id) {
-        if (id != null) { sql.append(" AND id = ?"); params.add(id); }
-        if (name != null) { sql.append(" AND name = ?"); params.add(name); }
-        if (trainSetId != null) { sql.append(" AND train_set_id = ?"); params.add(trainSetId); }
+        if (id != null) {
+            sql.append(" AND id = ?");
+            params.add(id);
+        }
+        if (name != null) {
+            sql.append(" AND name = ?");
+            params.add(name);
+        }
+        if (trainSetId != null) {
+            sql.append(" AND train_set_id = ?");
+            params.add(trainSetId);
+        }
     }
 
     private static VenueRecord mapRecord(ResultSet rs) throws SQLException {
@@ -114,9 +133,12 @@ public class VenueRepository {
 
     private static VenueResponse mapResponse(ResultSet rs) throws SQLException {
         VenueResponse r = new VenueResponse();
-        r.setId(rs.getLong("id")); r.setName(rs.getString("name")); r.setTrainSetId(rs.getInt("train_set_id"));
+        r.setId(rs.getLong("id"));
+        r.setName(rs.getString("name"));
+        r.setTrainSetId(rs.getInt("train_set_id"));
         return r;
     }
 
-    public record VenueRecord(long id, String name, int trainSetId) { }
+    public record VenueRecord(long id, String name, int trainSetId) {
+    }
 }

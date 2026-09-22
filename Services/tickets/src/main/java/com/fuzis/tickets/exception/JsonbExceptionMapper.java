@@ -18,8 +18,8 @@ public class JsonbExceptionMapper implements ExceptionMapper<JsonbException> {
     @Override
     public Response toResponse(JsonbException exception) {
         return Response.status(Response.Status.BAD_REQUEST)
-                .type("application/json")
-                .entity(new ErrorResponse("BAD_REQUEST", "Invalid JSON request body", OffsetDateTime.now(), uriInfo.getRequestUri().getPath()))
-                .build();
+        .type("application/json")
+        .entity(new ErrorResponse("BAD_REQUEST", "Invalid JSON request body", OffsetDateTime.now(), uriInfo.getRequestUri().getPath()))
+        .build();
     }
 }

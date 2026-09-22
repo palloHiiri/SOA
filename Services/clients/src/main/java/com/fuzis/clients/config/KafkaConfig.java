@@ -11,8 +11,8 @@ public class KafkaConfig {
 
     @Bean
     ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
-            ConsumerFactory<String, String> consumerFactory,
-            @Value("${kafka.listener.concurrency:1}") int concurrency) {
+    ConsumerFactory<String, String> consumerFactory,
+    @Value("${kafka.listener.concurrency:1}") int concurrency) {
         var factory = new ConcurrentKafkaListenerContainerFactory<String, String>();
         factory.setConsumerFactory(consumerFactory);
         factory.setConcurrency(concurrency);

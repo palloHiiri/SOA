@@ -19,14 +19,14 @@ public class RoleRepository {
             FROM roles
             WHERE name = :name
             """)
-                .bind("name", name)
-                .map((row, meta) -> new RoleRecord(
-                        row.get("id", Integer.class),
-                        row.get("name", String.class),
-                        row.get("description", String.class),
-                        row.get("is_default", Boolean.class)
-                ))
-                .one();
+        .bind("name", name)
+        .map((row, meta) -> new RoleRecord(
+        row.get("id", Integer.class),
+        row.get("name", String.class),
+        row.get("description", String.class),
+        row.get("is_default", Boolean.class)
+        ))
+        .one();
     }
 
     public Mono<RoleRecord> findDefault() {
@@ -35,13 +35,13 @@ public class RoleRepository {
             FROM roles
             WHERE is_default = TRUE
             """)
-                .map((row, meta) -> new RoleRecord(
-                        row.get("id", Integer.class),
-                        row.get("name", String.class),
-                        row.get("description", String.class),
-                        row.get("is_default", Boolean.class)
-                ))
-                .one();
+        .map((row, meta) -> new RoleRecord(
+        row.get("id", Integer.class),
+        row.get("name", String.class),
+        row.get("description", String.class),
+        row.get("is_default", Boolean.class)
+        ))
+        .one();
     }
 
     public Flux<RoleRecord> findAll() {
@@ -50,14 +50,15 @@ public class RoleRepository {
             FROM roles
             ORDER BY id
             """)
-                .map((row, meta) -> new RoleRecord(
-                        row.get("id", Integer.class),
-                        row.get("name", String.class),
-                        row.get("description", String.class),
-                        row.get("is_default", Boolean.class)
-                ))
-                .all();
+        .map((row, meta) -> new RoleRecord(
+        row.get("id", Integer.class),
+        row.get("name", String.class),
+        row.get("description", String.class),
+        row.get("is_default", Boolean.class)
+        ))
+        .all();
     }
 
-    public record RoleRecord(Integer id, String name, String description, Boolean isDefault) {}
+    public record RoleRecord(Integer id, String name, String description, Boolean isDefault) {
+    }
 }

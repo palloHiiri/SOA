@@ -1,5 +1,3 @@
-# Native build. Maven is copied from the official Maven image, while the
-# compilation itself runs with GraalVM Native Image.
 FROM maven:3.9.11-eclipse-temurin-21 AS maven
 
 FROM ghcr.io/graalvm/native-image-community:21 AS build

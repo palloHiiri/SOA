@@ -7,12 +7,12 @@ info:
     REST API сервиса бронирования и продажи железнодорожных билетов.
 
 servers:
-  - url: http://localhost:8080/booking
+  - url: http://localhost:8075/booking
     description: Local Tomcat
 
 tags:
   - name: Booking
-    description: Операции продажи и создания билетов
+    description: Операции продажи, создания и проверки билетов
 
 paths:
 
@@ -285,6 +285,82 @@ paths:
                   value:
                     code: TICKET_WITHOUT_PRICE
                     message: Ticket 1 has no price
+
+
+  /api/v1/booking/passengers/{passengerId}/tickets:
+    get:
+      tags:
+        - Booking
+      operationId: getPassengerTickets
+      summary: Получить купленные билеты пассажира
+      description: Возвращает все записи о продажах для указанного пассажира.
+      security:
+        - cookieSession: []
+      parameters:
+        - name: passengerId
+          in: path
+          required: true
+          description: UUID пассажира.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Список купленных билетов пассажира.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookResponse"
+        "400":
+          description: Некорректный UUID пассажира.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Сессия отсутствует, истекла или недействительна.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Пользователь не имеет доступа к указанному пассажиру.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Пассажир не найден.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/v1/booking/tickets/{ticketId}/sold:
+    get:
+      tags:
+        - Booking
+      operationId: isTicketSold
+      summary: Проверить, продан ли билет
+      description: Возвращает true, если в Booking существует запись о продаже указанного билета.
+      parameters:
+        - name: ticketId
+          in: path
+          required: true
+          description: ID билета.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        "200":
+          description: Результат проверки продажи.
+          content:
+            application/json:
+              schema:
+                type: boolean
 
 
 components:

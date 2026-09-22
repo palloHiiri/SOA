@@ -17,12 +17,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class InventoryJson {
-    private InventoryJson() { }
+    private InventoryJson() {
+    }
 
     public static JsonObject object(String data) {
         try (JsonReader reader = Json.createReader(new StringReader(data))) {
             return reader.readObject();
-        } catch (RuntimeException ex) {
+        }
+        catch (RuntimeException ex) {
             throw ApiException.internal("Stored Inventory snapshot contains invalid JSON");
         }
     }
@@ -63,19 +65,30 @@ public final class InventoryJson {
 
     public static CarriageTypeResponse carriageType(JsonObject o) {
         CarriageTypeResponse r = new CarriageTypeResponse();
-        r.setId(integer(o, "id")); r.setCode(string(o, "code")); r.setName(string(o, "name")); r.setDescription(string(o, "description"));
+        r.setId(integer(o, "id"));
+        r.setCode(string(o, "code"));
+        r.setName(string(o, "name"));
+        r.setDescription(string(o, "description"));
         return r;
     }
 
     public static SchemeResponse scheme(JsonObject o) {
         SchemeResponse r = new SchemeResponse();
-        r.setId(integer(o, "id")); r.setCode(string(o, "code")); r.setName(string(o, "name")); r.setStorageKey(string(o, "storageKey")); r.setVersion(integer(o, "version"));
+        r.setId(integer(o, "id"));
+        r.setCode(string(o, "code"));
+        r.setName(string(o, "name"));
+        r.setStorageKey(string(o, "storageKey"));
+        r.setVersion(integer(o, "version"));
         return r;
     }
 
     public static SeatResponse seat(JsonObject o) {
         SeatResponse r = new SeatResponse();
-        r.setId(integer(o, "id")); r.setSeatNumber(string(o, "seatNumber")); r.setX(number(o, "x")); r.setY(number(o, "y")); r.setRotation(number(o, "rotation"));
+        r.setId(integer(o, "id"));
+        r.setSeatNumber(string(o, "seatNumber"));
+        r.setX(number(o, "x"));
+        r.setY(number(o, "y"));
+        r.setRotation(number(o, "rotation"));
         return r;
     }
 
@@ -89,14 +102,18 @@ public final class InventoryJson {
         return result;
     }
 
-    public static String string(JsonObject o, String key) { return o.containsKey(key) && !o.isNull(key) ? o.getString(key) : null; }
+    public static String string(JsonObject o, String key) {
+        return o.containsKey(key) && !o.isNull(key) ? o.getString(key) : null;
+    }
     private static String requiredString(JsonObject o, String key) {
         String value = string(o, key);
         if (value == null || value.isBlank()) throw ApiException.internal("Invalid Inventory snapshot: missing " + key);
         return value;
     }
     private static int requiredInt(JsonObject o, String key) {
-        Integer value = integer(o,key); if (value == null) throw ApiException.internal("Invalid Inventory snapshot: missing " + key); return value;
+        Integer value = integer(o, key);
+        if (value == null) throw ApiException.internal("Invalid Inventory snapshot: missing " + key);
+        return value;
     }
     public static Integer integer(JsonObject o, String key) {
         if (!o.containsKey(key) || o.isNull(key)) return null;

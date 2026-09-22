@@ -1,4 +1,3 @@
-#!/bin/sh
 set -eu
 
 run_backend() {
@@ -16,9 +15,6 @@ run_backend() {
   update
 }
 
-# Keep one entry here per backend database.
-# Additional backends can add their own Database/<backend>/changelog-master.xml
-# and one run_backend line without changing the compose service.
 run_backend "sso-ident" "sso_ident" "sso-ident/changelog-master.xml"
 run_backend "clients" "clients" "clients/changelog-master.xml"
 run_backend "inventory" "inventory" "inventory/changelog-master.xml"

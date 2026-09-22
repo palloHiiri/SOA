@@ -33,20 +33,20 @@ public class IdentityEventConsumer {
         long version = e.path("eventVersion").asLong(e.path("event_version").asLong(0));
 
         tx.transactional(
-                db.sql("""
+        db.sql("""
                     INSERT INTO clients(id, user_id, email, first_name, last_name, username, identity_version)
                     VALUES (:id, :userId, :email, :firstName, :lastName, :username, :version)
                     ON CONFLICT (user_id) DO NOTHING
                     """).bind("id", UUID.randomUUID()).bind("userId", userId)
-                        .bind("email", requiredValue(email, "email"))
-                        .bind("firstName", firstName == null ? "" : firstName)
-                        .bind("lastName", lastName == null ? "" : lastName)
-                        .bind("username", username == null ? "" : username)
-                        .bind("version", version)
-                        .fetch().rowsUpdated()
-                        .then(findClientId(userId))
-                        .flatMap(clientId -> ensureChildren(clientId))
-                        .then()
+        .bind("email", requiredValue(email, "email"))
+        .bind("firstName", firstName == null ? "" : firstName)
+        .bind("lastName", lastName == null ? "" : lastName)
+        .bind("username", username == null ? "" : username)
+        .bind("version", version)
+        .fetch().rowsUpdated()
+        .then(findClientId(userId))
+        .flatMap(clientId -> ensureChildren(clientId))
+        .then()
         ).block();
     }
 
@@ -61,19 +61,19 @@ public class IdentityEventConsumer {
         String lastName = nullableText(e, "last_name", "lastName");
 
         tx.transactional(
-                db.sql("""
+        db.sql("""
                     INSERT INTO clients(id, user_id, email, first_name, last_name, username, identity_version)
                     VALUES (:id, :userId, :email, :firstName, :lastName, :username, :version)
                     ON CONFLICT (user_id) DO NOTHING
                     """).bind("id", UUID.randomUUID()).bind("userId", userId)
-                        .bind("email", requiredValue(email, "email"))
-                        .bind("firstName", firstName == null ? "" : firstName)
-                        .bind("lastName", lastName == null ? "" : lastName)
-                        .bind("username", username == null ? "" : username)
-                        .bind("version", version)
-                        .fetch().rowsUpdated()
-                        .then(findClientId(userId))
-                        .flatMap(clientId -> db.sql("""
+        .bind("email", requiredValue(email, "email"))
+        .bind("firstName", firstName == null ? "" : firstName)
+        .bind("lastName", lastName == null ? "" : lastName)
+        .bind("username", username == null ? "" : username)
+        .bind("version", version)
+        .fetch().rowsUpdated()
+        .then(findClientId(userId))
+        .flatMap(clientId -> db.sql("""
                             UPDATE clients SET
                                 email = :email,
                                 username = :username,
@@ -83,21 +83,21 @@ public class IdentityEventConsumer {
                                 updated_at = CURRENT_TIMESTAMP
                             WHERE id = :clientId AND identity_version < :version
                             """).bind("email", requiredValue(email, "email"))
-                                .bind("username", username == null ? "" : username)
-                                .bind("firstName", firstName == null ? "" : firstName)
-                                .bind("lastName", lastName == null ? "" : lastName)
-                                .bind("version", version).bind("clientId", clientId)
-                                .fetch().rowsUpdated()
-                                .then(ensureChildren(clientId))
-                        )
-                        .then()
+        .bind("username", username == null ? "" : username)
+        .bind("firstName", firstName == null ? "" : firstName)
+        .bind("lastName", lastName == null ? "" : lastName)
+        .bind("version", version).bind("clientId", clientId)
+        .fetch().rowsUpdated()
+        .then(ensureChildren(clientId))
+        )
+        .then()
         ).block();
     }
 
     private Mono<UUID> findClientId(UUID userId) {
         return db.sql("SELECT id FROM clients WHERE user_id = :userId")
-                .bind("userId", userId)
-                .map((row, meta) -> row.get("id", UUID.class)).one();
+        .bind("userId", userId)
+        .map((row, meta) -> row.get("id", UUID.class)).one();
     }
 
     private Mono<Void> ensureChildren(UUID clientId) {
@@ -106,7 +106,7 @@ public class IdentityEventConsumer {
                 VALUES (:id, :clientId, NULL, '{}'::jsonb)
                 ON CONFLICT (client_id) DO NOTHING
                 """).bind("id", UUID.randomUUID()).bind("clientId", clientId).fetch().rowsUpdated()
-                .then(db.sql("""
+        .then(db.sql("""
                 INSERT INTO client_attributes(id, client_id, attributes)
                 VALUES (:id, :clientId, '{}'::jsonb)
                 ON CONFLICT (client_id) DO NOTHING

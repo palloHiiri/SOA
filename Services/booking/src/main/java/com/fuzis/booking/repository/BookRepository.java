@@ -6,6 +6,8 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -67,4 +69,72 @@ public class BookRepository {
                 sourceTicketId
         );
     }
+
+    public List<Book> findByPassengerId(UUID passengerId) {
+        String sql = """
+                SELECT
+                    id,
+                    ticket_id,
+                    passenger_id,
+                    sale_price,
+                    source_ticket_id,
+                    sale_date
+                FROM ticket_sales
+                WHERE passenger_id = ?
+                ORDER BY sale_date DESC, id DESC
+                """;
+
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> {
+                    Long sourceId = rs.getObject("source_ticket_id") == null
+                            ? null
+                            : rs.getLong("source_ticket_id");
+
+                    return new Book(
+                            rs.getLong("id"),
+                            rs.getLong("ticket_id"),
+                            rs.getObject("passenger_id", UUID.class),
+                            rs.getBigDecimal("sale_price"),
+                            sourceId,
+                            rs.getObject("sale_date", OffsetDateTime.class)
+                    );
+                },
+                passengerId
+        );
+    }
+
+    public Optional<Book> findByTicketId(Long ticketId) {
+        String sql = """
+                SELECT
+                    id,
+                    ticket_id,
+                    passenger_id,
+                    sale_price,
+                    source_ticket_id,
+                    sale_date
+                FROM ticket_sales
+                WHERE ticket_id = ?
+                """;
+
+        return jdbcTemplate.query(
+                sql,
+                (rs, rowNum) -> {
+                    Long sourceId = rs.getObject("source_ticket_id") == null
+                            ? null
+                            : rs.getLong("source_ticket_id");
+
+                    return new Book(
+                            rs.getLong("id"),
+                            rs.getLong("ticket_id"),
+                            rs.getObject("passenger_id", UUID.class),
+                            rs.getBigDecimal("sale_price"),
+                            sourceId,
+                            rs.getObject("sale_date", OffsetDateTime.class)
+                    );
+                },
+                ticketId
+        ).stream().findFirst();
+    }
+
 }

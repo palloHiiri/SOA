@@ -20,17 +20,17 @@ public class ConstraintViolationExceptionMapper implements ExceptionMapper<Const
     @Override
     public Response toResponse(ConstraintViolationException exception) {
         String message = exception.getConstraintViolations().stream()
-                .map(ConstraintViolation::getMessage)
-                .distinct()
-                .sorted()
-                .collect(Collectors.joining("; "));
+        .map(ConstraintViolation::getMessage)
+        .distinct()
+        .sorted()
+        .collect(Collectors.joining("; "));
         return Response.status(Response.Status.BAD_REQUEST)
-                .type("application/json")
-                .entity(new ErrorResponse(
-                        "VALIDATION_ERROR",
-                        message.isBlank() ? "Request validation failed" : message,
-                        OffsetDateTime.now(),
-                        uriInfo.getRequestUri().getPath()))
-                .build();
+        .type("application/json")
+        .entity(new ErrorResponse(
+        "VALIDATION_ERROR",
+        message.isBlank() ? "Request validation failed" : message,
+        OffsetDateTime.now(),
+        uriInfo.getRequestUri().getPath()))
+        .build();
     }
 }

@@ -30,10 +30,10 @@ public class VenueService {
 
     @Inject
     public VenueService(
-            DataSource dataSource,
-            VenueRepository venueRepository,
-            TicketRepository ticketRepository,
-            CdcRepository cdcRepository) {
+    DataSource dataSource,
+    VenueRepository venueRepository,
+    TicketRepository ticketRepository,
+    CdcRepository cdcRepository) {
         this.dataSource = dataSource;
         this.venueRepository = venueRepository;
         this.ticketRepository = ticketRepository;
@@ -41,12 +41,12 @@ public class VenueService {
     }
 
     public PageResponse<VenueResponse> list(
-            int page,
-            int size,
-            List<String> sort,
-            Long id,
-            String name,
-            Integer trainSetId) {
+    int page,
+    int size,
+    List<String> sort,
+    Long id,
+    String name,
+    Integer trainSetId) {
 
         Pagination pagination = Pagination.of(page, size, maxSize());
         var sorts = SortParser.parse(sort, Sorts.VENUES, "id");
@@ -54,16 +54,17 @@ public class VenueService {
         try {
             long total = venueRepository.count(name, trainSetId, id);
             List<VenueResponse> content = venueRepository.findPage(
-                    page,
-                    size,
-                    pagination.offset(),
-                    name,
-                    trainSetId,
-                    id,
-                    sorts);
+            page,
+            size,
+            pagination.offset(),
+            name,
+            trainSetId,
+            id,
+            sorts);
 
             return new PageResponse<>(content, page, size, total);
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw databaseError(e);
         }
     }
@@ -77,7 +78,8 @@ public class VenueService {
                 throw ApiException.notFound("Venue " + id + " not found");
             }
             return response(record);
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw databaseError(e);
         }
     }
@@ -89,29 +91,33 @@ public class VenueService {
             try {
                 if (cdcRepository.findLatest(connection, request.getTrainSetId()).isEmpty()) {
                     throw ApiException.notFound(
-                            "Inventory snapshot for train set "
-                                    + request.getTrainSetId()
-                                    + " is not available");
+                    "Inventory snapshot for train set "
+                    + request.getTrainSetId()
+                    + " is not available");
                 }
 
                 long id = venueRepository.insert(
-                        connection,
-                        request.getName().trim(),
-                        request.getTrainSetId());
+                connection,
+                request.getName().trim(),
+                request.getTrainSetId());
 
                 VenueRecord record = venueRepository.findById(connection, id, false);
                 connection.commit();
                 return response(record);
-            } catch (SQLException e) {
+            }
+            catch (SQLException e) {
                 rollbackQuietly(connection);
                 throw databaseError(e);
-            } catch (RuntimeException e) {
+            }
+            catch (RuntimeException e) {
                 rollbackQuietly(connection);
                 throw e;
-            } finally {
+            }
+            finally {
                 restoreAutoCommit(connection);
             }
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw databaseError(e);
         }
     }
@@ -130,36 +136,40 @@ public class VenueService {
 
                 if (cdcRepository.findLatest(connection, request.getTrainSetId()).isEmpty()) {
                     throw ApiException.notFound(
-                            "Inventory snapshot for train set "
-                                    + request.getTrainSetId()
-                                    + " is not available");
+                    "Inventory snapshot for train set "
+                    + request.getTrainSetId()
+                    + " is not available");
                 }
 
                 if (current.trainSetId() != request.getTrainSetId()
-                        && ticketRepository.countByVenue(connection, id) > 0) {
+                && ticketRepository.countByVenue(connection, id) > 0) {
                     throw ApiException.conflict(
-                            "Venue trainSetId cannot be changed while tickets exist");
+                    "Venue trainSetId cannot be changed while tickets exist");
                 }
 
                 venueRepository.update(
-                        connection,
-                        id,
-                        request.getName().trim(),
-                        request.getTrainSetId());
+                connection,
+                id,
+                request.getName().trim(),
+                request.getTrainSetId());
 
                 VenueRecord record = venueRepository.findById(connection, id, false);
                 connection.commit();
                 return response(record);
-            } catch (SQLException e) {
+            }
+            catch (SQLException e) {
                 rollbackQuietly(connection);
                 throw databaseError(e);
-            } catch (RuntimeException e) {
+            }
+            catch (RuntimeException e) {
                 rollbackQuietly(connection);
                 throw e;
-            } finally {
+            }
+            finally {
                 restoreAutoCommit(connection);
             }
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw databaseError(e);
         }
     }
@@ -182,16 +192,20 @@ public class VenueService {
 
                 venueRepository.delete(connection, id);
                 connection.commit();
-            } catch (SQLException e) {
+            }
+            catch (SQLException e) {
                 rollbackQuietly(connection);
                 throw databaseError(e);
-            } catch (RuntimeException e) {
+            }
+            catch (RuntimeException e) {
                 rollbackQuietly(connection);
                 throw e;
-            } finally {
+            }
+            finally {
                 restoreAutoCommit(connection);
             }
-        } catch (SQLException e) {
+        }
+        catch (SQLException e) {
             throw databaseError(e);
         }
     }
@@ -214,7 +228,8 @@ public class VenueService {
         try {
             String value = System.getenv("TICKETS_MAX_PAGE_SIZE");
             return value == null || value.isBlank() ? 100 : Integer.parseInt(value);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             return 100;
         }
     }
@@ -229,16 +244,18 @@ public class VenueService {
     private static void rollbackQuietly(Connection connection) {
         try {
             connection.rollback();
-        } catch (SQLException ignored) {
-            // Preserve the original exception.
+        }
+        catch (SQLException ignored) {
+
         }
     }
 
     private static void restoreAutoCommit(Connection connection) {
         try {
             connection.setAutoCommit(true);
-        } catch (SQLException ignored) {
-            // The connection is being closed by try-with-resources.
+        }
+        catch (SQLException ignored) {
+
         }
     }
 }

@@ -20,12 +20,19 @@ public class KafkaConfig {
         return properties;
     }
 
-    public String topic() { return value("TICKETS_KAFKA_TOPIC", "inventory.train_set_snapshots"); }
+    public String topic() {
+        return value("TICKETS_KAFKA_TOPIC", "inventory.train_set_snapshots");
+    }
 
     public long pollTimeoutMs() {
         String value = System.getenv("TICKETS_KAFKA_POLL_TIMEOUT_MS");
         if (value == null || value.isBlank()) return 1000L;
-        try { return Long.parseLong(value); } catch (NumberFormatException ex) { return 1000L; }
+        try {
+            return Long.parseLong(value);
+        }
+        catch (NumberFormatException ex) {
+            return 1000L;
+        }
     }
 
     private static String value(String key, String fallback) {

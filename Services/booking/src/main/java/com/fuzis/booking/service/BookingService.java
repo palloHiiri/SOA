@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -160,6 +161,28 @@ public class BookingService {
                 book.passengerId(),
                 book.price()
         );
+    }
+
+    public List<BookResponse> getPassengerTickets(
+            UUID passengerId,
+            String sessionToken
+    ) {
+        PassengerResponse passenger = clientsClient.getPassenger(
+                passengerId,
+                sessionToken
+        );
+
+        return bookRepository.findByPassengerId(passenger.id()).stream()
+                .map(book -> new BookResponse(
+                        book.ticketId(),
+                        book.passengerId(),
+                        book.price()
+                ))
+                .toList();
+    }
+
+    public boolean isTicketSold(Long ticketId) {
+        return bookRepository.findByTicketId(ticketId).isPresent();
     }
 
     private BigDecimal increasePrice(

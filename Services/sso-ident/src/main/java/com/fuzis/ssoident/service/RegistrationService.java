@@ -26,7 +26,7 @@ public class RegistrationService {
     private final Argon2PasswordEncoder passwordEncoder = Argon2PasswordEncoder.defaultsForSpringSecurity_v5_8();
 
     public RegistrationService(UserRepository users, UserWriteRepository writes, AuditService audit,
-                               KafkaEventPublisher kafkaPublisher, KetoService keto, RoleRepository roles, TransactionalOperator tx) {
+    KafkaEventPublisher kafkaPublisher, KetoService keto, RoleRepository roles, TransactionalOperator tx) {
         this.users = users;
         this.writes = writes;
         this.audit = audit;
@@ -41,48 +41,50 @@ public class RegistrationService {
         String username = canonicalUsername(request.username());
 
         return users.existsByLogin(email)
-                .flatMap(emailExists -> emailExists
-                        ? Mono.error(new IllegalArgumentException("Login is already in use"))
-                        : username == null ? Mono.just(false) : users.existsByLogin(username))
-                .flatMap(usernameExists -> usernameExists
-                        ? Mono.error(new IllegalArgumentException("Login is already in use"))
-                        : create(request, email, username, ip, userAgent));
+        .flatMap(emailExists -> emailExists
+        ? Mono.error(new IllegalArgumentException("Login is already in use"))
+        : username == null ? Mono.just(false) : users.existsByLogin(username))
+        .flatMap(usernameExists -> usernameExists
+        ? Mono.error(new IllegalArgumentException("Login is already in use"))
+        : create(request, email, username, ip, userAgent));
     }
 
     private Mono<RegisterResponse> create(RegisterRequest request, String email, String username,
-                                          String ip, String userAgent) {
+    String ip, String userAgent) {
         UUID userId = UUID.randomUUID();
         String hash = passwordEncoder.encode(request.password());
 
         Mono<Void> dbTx = writes.createUser(userId, hash, email, username, request.firstName(), request.lastName())
-                .then(audit.write(userId, "REGISTER", userId, ip, userAgent, true,
-                        Map.of("status", "PENDING")));
+        .then(audit.write(userId, "REGISTER", userId, ip, userAgent, true,
+        Map.of("status", "PENDING")));
 
         return tx.transactional(dbTx)
-                .then(publishRegistration(userId, email, username, request.firstName(), request.lastName())
-                        .materialize())
-                .flatMap(signal -> {
-                    boolean kafkaOk = signal.isOnComplete();
-                    Throwable kafkaFailure = signal.getThrowable();
-                    return roles.findDefault()
-                            .switchIfEmpty(Mono.error(new IllegalStateException("Default role is not configured")))
-                            .flatMap(defaultRole -> keto.addUserToGroup(userId, defaultRole.name()))
-                            .materialize()
-                            .flatMap(ketoSignal -> {
-                                boolean ketoOk = ketoSignal.isOnComplete();
-                                Throwable ketoFailure = ketoSignal.getThrowable();
-                                if (kafkaOk && ketoOk) {
-                                    return activate(userId, ip, userAgent)
-                                            .thenReturn(new RegisterResponse(userId, "ACTIVE"));
-                                }
-                                return recordIntegrationFailure(userId, ip, userAgent, kafkaFailure, ketoFailure)
-                                        .thenReturn(new RegisterResponse(userId, "PENDING"));
-                            });
-                });
+        .then(publishRegistration(userId, email, username, request.firstName(), request.lastName())
+        .materialize())
+        .flatMap(signal -> {
+            boolean kafkaOk = signal.isOnComplete();
+            Throwable kafkaFailure = signal.getThrowable();
+            return roles.findDefault()
+            .switchIfEmpty(Mono.error(new IllegalStateException("Default role is not configured")))
+            .flatMap(defaultRole -> keto.addUserToGroup(userId, defaultRole.name()))
+            .materialize()
+            .flatMap(ketoSignal -> {
+                boolean ketoOk = ketoSignal.isOnComplete();
+                Throwable ketoFailure = ketoSignal.getThrowable();
+                if (kafkaOk && ketoOk) {
+                    return activate(userId, ip, userAgent)
+                    .thenReturn(new RegisterResponse(userId, "ACTIVE"));
+                }
+                return recordIntegrationFailure(userId, ip, userAgent, kafkaFailure, ketoFailure)
+                .thenReturn(new RegisterResponse(userId, "PENDING"));
+            }
+            );
+        }
+        );
     }
 
     private Mono<Void> publishRegistration(UUID userId, String email, String username,
-                                           String firstName, String lastName) {
+    String firstName, String lastName) {
         Map<String, Object> event = new LinkedHashMap<>();
         event.put("event", "SSO_IDENT_USER_REGISTERED");
         event.put("userId", userId.toString());
@@ -95,14 +97,14 @@ public class RegistrationService {
 
     private Mono<Void> activate(UUID userId, String ip, String userAgent) {
         return tx.transactional(
-                writes.updateStatus(userId, "ACTIVE")
-                        .then(audit.write(userId, "REGISTER", userId, ip, userAgent, true,
-                                Map.of("status", "ACTIVE", "integrations", "kafka+keto")))
+        writes.updateStatus(userId, "ACTIVE")
+        .then(audit.write(userId, "REGISTER", userId, ip, userAgent, true,
+        Map.of("status", "ACTIVE", "integrations", "kafka+keto")))
         );
     }
 
     private Mono<Void> recordIntegrationFailure(UUID userId, String ip, String userAgent,
-                                                Throwable kafkaFailure, Throwable ketoFailure) {
+    Throwable kafkaFailure, Throwable ketoFailure) {
         Map<String, Object> metadata = new LinkedHashMap<>();
         metadata.put("status", "PENDING");
         if (kafkaFailure != null) metadata.put("kafkaError", rootMessage(kafkaFailure));
@@ -116,7 +118,9 @@ public class RegistrationService {
         return current.getMessage() == null ? current.getClass().getSimpleName() : current.getMessage();
     }
 
-    public static String canonicalEmail(String value) { return value.trim().toLowerCase(java.util.Locale.ROOT); }
+    public static String canonicalEmail(String value) {
+        return value.trim().toLowerCase(java.util.Locale.ROOT);
+    }
     public static String canonicalUsername(String value) {
         return value == null || value.isBlank() ? null : value.trim().toLowerCase(java.util.Locale.ROOT);
     }

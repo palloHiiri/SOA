@@ -69,6 +69,7 @@ The project runs the common infrastructure and backend services from one Docker 
 | `sso-ident` | Reactive identity/session API, GraalVM Native Image | `8080` | PostgreSQL `sso_ident` + Redis |
 | `clients` | Client profile / passenger API + Kafka consumers, GraalVM Native Image | internal `8080` | PostgreSQL `clients` |
 | `inventory` | MVC train-set import/lifecycle API + CDC source, GraalVM Native Image | internal `8080` | PostgreSQL `inventory` |
+| `booking` | Spring MVC booking/sales API packaged as a WAR and deployed to Tomcat 11 | `8075 -> 8080` | PostgreSQL `booking` |
 | `nginx` | Internal backend reverse proxy | internal `80` | none |
 | `oathkeeper` | Reverse proxy + authentication/authorization | `4455`, `4456` | none |
 
@@ -110,6 +111,8 @@ The project now runs Debezium `3.5.2.Final` as Kafka Connect rather than Debeziu
 
 The connector configuration is stored at `Docker/debezium/connectors/sso-ident-cdc.json` and registered through Kafka Connect's REST API by `Docker/debezium/register-connector.sh`.
 
+`debezium-connector-init` retries Kafka Connect availability, connector creation and connector-status checks up to `MAX_ATTEMPTS` times. The Compose defaults are 10 attempts with a 3-second delay between attempts. If a connector was created successfully but its status endpoint is temporarily unavailable, the next attempt detects the existing connector and retries only the status check.
+
 Important connector settings:
 
 ```text
@@ -138,6 +141,10 @@ max_replication_slots=4
 Liquibase creates the `debezium` replication role, the CDC table, the publication and the required grants. The connector owns the replication slot.
 
 `004-user-cdc.sql` deliberately publishes only `INSERT` from `sso_ident_user_cdc`; application profile updates insert a complete snapshot row into the CDC table in the same transaction as the user change.
+
+Tickets does not create relational copies of the Inventory tables. Its CDC projection stores the latest Inventory snapshot in JSONB using the same aggregate shape as `inventory.train_set_cdc`; the snapshot row is keyed by `train_set_id`, so that key is also the direct access path for the projection queries.
+
+The Inventory import accepts a CDC-compatible aggregate shape. Each carriage contains a `carriageType` with a local `ref`; IDs and lifecycle status are rejected on import. A carriage type may provide either one active `scheme` or a local `schemes` array for multiple versions.
 
 ## Clients event flow
 
@@ -174,6 +181,7 @@ redpanda -> redpanda-topic-init -> debezium-connect
 postgres + liquibase + keto-init + topic-init -> sso-ident
 postgres + liquibase + topic-init -------------> clients
 postgres + liquibase + keto-init -------------> inventory
+postgres + liquibase --------------------------> booking
 
 sso-ident + clients + inventory -> nginx -> oathkeeper
 redpanda + debezium-connect -> redpanda-console
@@ -186,6 +194,12 @@ Redpanda Console is exposed on `http://localhost:8088`. It connects to the Redpa
 ## Internal reverse-proxy
 
 The Compose stack contains an internal `nginx` service between Oathkeeper and application backends. Oathkeeper access-rule `upstream.url` points to `http://nginx:80`. Nginx routes `/api/v1/sso-ident/...`, `/api/v1/clients-srv/...`, `/api/v1/inventory/...` and `/api/v1/tickets/...` to their respective services and returns 404 for unrelated paths.
+
+## Booking service
+
+`booking` is built as `booking.war` and deployed as the `/booking` web application in Tomcat 11. Compose publishes Tomcat on `http://localhost:8075`. The service is started after the PostgreSQL health check and successful Liquibase migration. Its existing application-level Clients Service, Tickets Service and database addresses are preserved.
+
+The API is documented in `Docs/booking_openapi.yaml`. In addition to selling a ticket, Booking exposes a passenger ticket list and a boolean check for whether a ticket already has a sale record.
 
 ## Initial system administrator bootstrap
 

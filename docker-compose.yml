@@ -175,6 +175,8 @@ services:
     environment:
       CONNECT_URL: http://debezium-connect:8083
       CONNECTOR_CONFIG_DIR: /connectors
+      MAX_ATTEMPTS: 10
+      RETRY_DELAY_SECONDS: 3
     entrypoint: ["/bin/sh", "/register-connector.sh"]
 
   keto-migrate:
@@ -320,6 +322,22 @@ services:
       timeout: 5s
       retries: 20
       start_period: 20s
+
+  booking:
+    build:
+      context: ./Services/booking
+    image: soa-labs/booking:local
+    container_name: booking
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      liquibase:
+        condition: service_completed_successfully
+    environment:
+      SERVER_PORT: 8080
+    ports:
+      - "8075:8080"
 
   tickets:
     build:

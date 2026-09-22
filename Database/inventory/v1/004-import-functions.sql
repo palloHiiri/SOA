@@ -62,9 +62,6 @@ BEGIN
     )
     RETURNING id INTO v_train_set_id;
 
-    -- The shape intentionally follows the CDC snapshot: a carriage contains
-    -- its carriageType and optional scheme. IDs are omitted and references
-    -- between repeated carriage types use the local `ref` field.
     FOR v_carriage IN SELECT value FROM jsonb_array_elements(p_data->'carriages') LOOP
         v_type := v_carriage->'carriageType';
         v_type_ref := v_type->>'ref';
@@ -95,9 +92,6 @@ BEGIN
 
             v_type_ids := v_type_ids || jsonb_build_object(v_type_ref, v_carriage_type_id);
 
-            -- CDC embeds the active scheme as `scheme`; the import may also
-            -- provide a local `schemes` array when more than one version must
-            -- be imported for a carriage type.
             IF v_type ? 'schemes' AND jsonb_typeof(v_type->'schemes') = 'array' THEN
                 FOR v_scheme IN SELECT value FROM jsonb_array_elements(v_type->'schemes') LOOP
                     PERFORM inventory_import_scheme(v_carriage_type_id, v_scheme);

@@ -4,6 +4,7 @@ import com.fuzis.booking.dto.BookResponse;
 import com.fuzis.booking.service.BookingService;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -42,5 +43,20 @@ public class BookingController {
                 discount,
                 sessionToken
         );
+    }
+
+    @GetMapping("/passengers/{passengerId}/tickets")
+    public List<BookResponse> getPassengerTickets(
+            @PathVariable("passengerId") UUID passengerId,
+            @CookieValue("SESSION") String sessionToken
+    ) {
+        return bookingService.getPassengerTickets(passengerId, sessionToken);
+    }
+
+    @GetMapping("/tickets/{ticketId}/sold")
+    public boolean isTicketSold(
+            @PathVariable("ticketId") Long ticketId
+    ) {
+        return bookingService.isTicketSold(ticketId);
     }
 }

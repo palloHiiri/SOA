@@ -30,14 +30,16 @@ public class RoleController {
     public Mono<UserGroupsResponse> getOwnGroups(ServerHttpRequest request) {
         var cookie = request.getCookies().getFirst(sessions.cookieName());
         return sessions.resolve(cookie == null ? null : cookie.getValue())
-                .switchIfEmpty(Mono.error(new IllegalStateException("No active session")))
-                .flatMap(session -> roles.getUserGroups(session.userId()));
+        .switchIfEmpty(Mono.error(new IllegalStateException("No active session")))
+        .flatMap(session -> roles.getUserGroups(session.userId()));
     }
 
     @PostMapping("/admin/users/{userId}/groups")
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<GroupResponse> addGroup(@PathVariable UUID userId,
-                                         @Valid @RequestBody AddGroupRequest request) {
+    @Valid
+    @RequestBody
+    AddGroupRequest request) {
         return roles.addUserToGroup(userId, request.group());
     }
 

@@ -8,9 +8,11 @@ import java.util.List;
 import java.util.Map;
 
 public final class SortParser {
-    private SortParser() { }
+    private SortParser() {
+    }
 
-    public record SortPart(String expression, String direction) { }
+    public record SortPart(String expression, String direction) {
+    }
 
     public static List<SortPart> parse(List<String> raw, Map<String, String> allowed, String defaultField) {
         List<String> values = raw == null ? List.of() : raw;
@@ -42,9 +44,14 @@ public final class SortParser {
     }
 
     public static Map<String, String> map(String... pairs) {
-        if (pairs.length % 2 != 0) throw new IllegalArgumentException("Pairs expected");
+        if (pairs.length % 2 != 0) {
+            throw new IllegalArgumentException("Pairs expected");
+        }
+
         Map<String, String> result = new LinkedHashMap<>();
-        for (int i = 0; i < pairs.length; i += 2) result.put(pairs[i], pairs[i + 1]);
+        for (int i = 0; i < pairs.length; i += 2) {
+            result.put(pairs[i], pairs[i + 1]);
+        }
         return result;
     }
 

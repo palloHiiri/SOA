@@ -38,8 +38,6 @@ CREATE TABLE price_histories (
         CHECK (discount > 0 AND discount <= 100)
 );
 
--- Inventory does not expose relational tables to Tickets. The service stores
--- the CDC snapshot in the same three-column shape as inventory.train_set_cdc.
 CREATE TABLE train_set_cdc (
     train_set_id INTEGER NOT NULL,
     data JSONB NOT NULL,
@@ -62,4 +60,3 @@ CREATE INDEX idx_price_histories_changed_date
 CREATE INDEX idx_price_histories_discount
     ON price_histories(discount);
 
--- The primary key already provides the required access path by train_set_id.

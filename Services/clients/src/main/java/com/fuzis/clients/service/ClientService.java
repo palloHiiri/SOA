@@ -11,10 +11,12 @@ import java.util.UUID;
 @Service
 public class ClientService {
     private final ClientRepository clients;
-    public ClientService(ClientRepository clients) { this.clients = clients; }
+    public ClientService(ClientRepository clients) {
+        this.clients = clients;
+    }
     public Mono<ClientProfileResponse> profile(UUID userId) {
         return clients.findProfileByUserId(userId)
-                .switchIfEmpty(Mono.error(new IllegalStateException("Client not found")));
+        .switchIfEmpty(Mono.error(new IllegalStateException("Client not found")));
     }
 
     public Mono<ClientProfileResponse> updateProfile(UUID userId, ClientProfileUpdateRequest request) {
@@ -22,6 +24,6 @@ public class ClientService {
             return Mono.error(new IllegalArgumentException("extraFields must be a JSON object"));
         }
         return clients.updateProfile(userId, request)
-                .flatMap(ignored -> profile(userId));
+        .flatMap(ignored -> profile(userId));
     }
 }

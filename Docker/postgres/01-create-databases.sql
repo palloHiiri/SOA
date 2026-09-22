@@ -1,6 +1,3 @@
--- Create application databases in the default PostgreSQL database.
--- The PostgreSQL container runs this script only when its data directory
--- is initialized for the first time.
 SELECT 'CREATE DATABASE sso_ident OWNER postgres'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'sso_ident')\gexec
 

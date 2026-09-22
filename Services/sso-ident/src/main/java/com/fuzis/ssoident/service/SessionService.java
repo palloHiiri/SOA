@@ -25,9 +25,9 @@ public class SessionService {
     private final String cookieName;
 
     public SessionService(ReactiveStringRedisTemplate redis,
-                          ObjectMapper mapper,
-                          @Value("${sso.session.ttl}") Duration ttl,
-                          @Value("${sso.session.cookie-name}") String cookieName) {
+    ObjectMapper mapper,
+    @Value("${sso.session.ttl}") Duration ttl,
+    @Value("${sso.session.cookie-name}") String cookieName) {
         this.redis = redis;
         this.mapper = mapper;
         this.ttl = ttl;
@@ -42,21 +42,22 @@ public class SessionService {
         String value = userId + ":" + sessionId;
 
         return redis.opsForValue().set(key, value, ttl)
-                .flatMap(ok -> ok
-                        ? Mono.just(new SessionData(sessionId, userId, token, expiresAt))
-                        : Mono.error(new IllegalStateException("Unable to store session in Redis")));
+        .flatMap(ok -> ok
+        ? Mono.just(new SessionData(sessionId, userId, token, expiresAt))
+        : Mono.error(new IllegalStateException("Unable to store session in Redis")));
     }
 
     public Mono<SessionData> resolve(String token) {
         if (token == null || token.isBlank()) return Mono.empty();
         return redis.opsForValue().get(redisKey(token))
-                .flatMap(value -> {
-                    String[] parts = value.split(":", 2);
-                    if (parts.length != 2) return Mono.empty();
-                    return Mono.just(new SessionData(
-                            UUID.fromString(parts[1]), UUID.fromString(parts[0]), token, Instant.now().plus(ttl)
-                    ));
-                });
+        .flatMap(value -> {
+            String[] parts = value.split(":", 2);
+            if (parts.length != 2) return Mono.empty();
+            return Mono.just(new SessionData(
+            UUID.fromString(parts[1]), UUID.fromString(parts[0]), token, Instant.now().plus(ttl)
+            ));
+        }
+        );
     }
 
     public Mono<Boolean> revoke(String token) {
@@ -68,24 +69,30 @@ public class SessionService {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));
-        } catch (NoSuchAlgorithmException e) {
+        }
+        catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
         }
     }
 
     public ResponseCookie cookie(String token, Duration maxAge) {
         return ResponseCookie.from(cookieName, token)
-                .httpOnly(true)
-                .secure(false)
-                .sameSite("Lax")
-                .path("/")
-                .maxAge(maxAge)
-                .build();
+        .httpOnly(true)
+        .secure(false)
+        .sameSite("Lax")
+        .path("/")
+        .maxAge(maxAge)
+        .build();
     }
 
-    public String cookieName() { return cookieName; }
+    public String cookieName() {
+        return cookieName;
+    }
 
-    private String redisKey(String token) { return "sso:session:" + token; }
+    private String redisKey(String token) {
+        return "sso:session:" + token;
+    }
 
-    public record SessionData(UUID sessionId, UUID userId, String token, Instant expiresAt) {}
+    public record SessionData(UUID sessionId, UUID userId, String token, Instant expiresAt) {
+    }
 }

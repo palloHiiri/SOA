@@ -23,9 +23,11 @@ public class InventoryService {
         validateImportPayload(payload);
         try {
             return repository.importTrainSet(payload);
-        } catch (DataIntegrityViolationException e) {
+        }
+        catch (DataIntegrityViolationException e) {
             throw new ConflictException("Train set import conflicts with existing inventory data", e);
-        } catch (DataAccessException e) {
+        }
+        catch (DataAccessException e) {
             if (sqlState(e).equals("P0001") || sqlState(e).equals("22023")) {
                 throw new BadRequestException(message(e, "Invalid train set import"), e);
             }
@@ -43,7 +45,8 @@ public class InventoryService {
                 throw new BadRequestException("Unknown lifecycle status: " + status);
             }
             return repository.changeLifecycle(trainSetId, status);
-        } catch (DataAccessException e) {
+        }
+        catch (DataAccessException e) {
             if (sqlState(e).equals("P0001") || sqlState(e).equals("22023")) {
                 throw new BadRequestException(message(e, "Invalid train set lifecycle transition"), e);
             }
@@ -91,13 +94,21 @@ public class InventoryService {
     }
 
     public static class ConflictException extends RuntimeException {
-        public ConflictException(String message, Throwable cause) { super(message, cause); }
+        public ConflictException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
     public static class BadRequestException extends RuntimeException {
-        public BadRequestException(String message) { super(message); }
-        public BadRequestException(String message, Throwable cause) { super(message, cause); }
+        public BadRequestException(String message) {
+            super(message);
+        }
+        public BadRequestException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
     public static class NotFoundException extends RuntimeException {
-        public NotFoundException(String message) { super(message); }
+        public NotFoundException(String message) {
+            super(message);
+        }
     }
 }

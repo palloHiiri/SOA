@@ -21,8 +21,8 @@ public class WebApplicationExceptionMapper implements ExceptionMapper<WebApplica
         String code = status == 404 ? "NOT_FOUND" : "BAD_REQUEST";
         String message = exception.getMessage() == null ? "Invalid HTTP request" : exception.getMessage();
         return Response.status(status)
-                .type("application/json")
-                .entity(new ErrorResponse(code, message, OffsetDateTime.now(), uriInfo.getRequestUri().getPath()))
-                .build();
+        .type("application/json")
+        .entity(new ErrorResponse(code, message, OffsetDateTime.now(), uriInfo.getRequestUri().getPath()))
+        .build();
     }
 }
