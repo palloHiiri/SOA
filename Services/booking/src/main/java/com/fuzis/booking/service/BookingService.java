@@ -2,9 +2,10 @@ package com.fuzis.booking.service;
 
 import com.fuzis.booking.client.ClientsClient;
 import com.fuzis.booking.client.TicketsClient;
-import com.fuzis.booking.client.dto.PassengerResponse;
-import com.fuzis.booking.client.dto.TicketResponse;
+import com.fuzis.booking.client.dto.*;
 import com.fuzis.booking.dto.BookResponse;
+import com.fuzis.booking.exception.InvalidDiscountException;
+import com.fuzis.booking.exception.NoAvailableSeatException;
 import com.fuzis.booking.exception.TicketAlreadyBookedException;
 import com.fuzis.booking.model.Book;
 import com.fuzis.booking.repository.BookRepository;
@@ -69,5 +70,93 @@ public class BookingService {
         } catch (DuplicateKeyException exception) {
             throw new TicketAlreadyBookedException(ticketId);
         }
+    }
+
+    public BookResponse bookTicketWithDiscount(
+            Long sourceTicketId,
+            UUID passengerId,
+            Integer discount,
+            String sessionToken
+    ) {
+
+        if (discount == null
+                || discount < 1
+                || discount > 100) {
+
+            throw new InvalidDiscountException(discount);
+        }
+
+        TicketResponse sourceTicket = ticketsClient.getTicket(sourceTicketId);
+
+        if (sourceTicket.basePrice() == null) {
+            throw new IllegalStateException("Ticket " + sourceTicketId + " has no price");
+        }
+
+        PassengerResponse passenger =
+                clientsClient.getPassenger(passengerId, sessionToken);
+
+        BigDecimal newBasePrice = increasePrice(sourceTicket.basePrice(), discount);
+
+        SeatPageResponse seats =
+                ticketsClient.getSeats(sourceTicket.venue().trainSetId(), sourceTicket.carriageNumber());
+
+        if (seats == null || seats.content() == null) {
+            throw new NoAvailableSeatException(sourceTicketId);
+        }
+
+        TicketResponse newTicket = null;
+
+        for (SeatResponse seat : seats.content()) {
+            if (seat.seatNumber().equals(
+                    sourceTicket.seatNumber()
+            )) {
+                continue;
+            }
+
+            TicketCreateRequest request =
+                    new TicketCreateRequest(
+                            sourceTicket.name(),
+                            sourceTicket.venue().id(),
+                            sourceTicket.carriageNumber(),
+                            seat.seatNumber(),
+                            newBasePrice,
+                            discount,
+                            sourceTicket.refundable(),
+                            sourceTicket.type()
+                    );
+
+            var created = ticketsClient.tryCreateTicket(request);
+
+            if (created.isPresent()) {
+                newTicket = created.get();
+                break;
+            }
+        }
+
+        if (newTicket == null) {
+            throw new NoAvailableSeatException(sourceTicketId);
+        }
+
+        Book book = bookRepository.save(
+                newTicket.id(),
+                passenger.id(),
+                newTicket.basePrice(),
+                sourceTicket.id()
+        );
+
+        return new BookResponse(
+                book.ticketId(),
+                book.passengerId(),
+                book.price()
+        );
+    }
+
+    private BigDecimal increasePrice(
+            BigDecimal basePrice,
+            Integer percent
+    ) {
+        return basePrice
+                .multiply(BigDecimal.valueOf(100L + percent))
+                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
 }

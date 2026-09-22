@@ -5,10 +5,15 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record TicketResponse (
+public record TicketResponse(
         Long id,
         String name,
         BigDecimal basePrice,
-        Integer discount
-){
+        Integer discount,
+        Boolean refundable,
+        String type,
+        VenueResponse venue,
+        String carriageNumber,
+        String seatNumber
+) {
 }

@@ -19,4 +19,15 @@ public class GlobalExceptionHandler {
         ErrorResponse errorResponse = new ErrorResponse("TICKET_ALREADY_BOOKED", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
+    @ExceptionHandler(NoAvailableSeatException.class)
+    public ResponseEntity<ErrorResponse> handleNoAvailableSeatException(NoAvailableSeatException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).
+                body(new ErrorResponse("NO_AVAILABLE_SEAT", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidDiscountException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidDiscountException(InvalidDiscountException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("INVALID_DISCOUNT", exception.getMessage()));
+    }
 }

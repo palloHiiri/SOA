@@ -1,10 +1,15 @@
 package com.fuzis.booking.client;
 
+import com.fuzis.booking.client.dto.SeatPageResponse;
+import com.fuzis.booking.client.dto.TicketCreateRequest;
 import com.fuzis.booking.client.dto.TicketResponse;
 import com.fuzis.booking.exception.TicketNotFoundException;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
+
+import java.util.Optional;
 
 @Component
 public class TicketsClient {
@@ -24,6 +29,40 @@ public class TicketsClient {
                     .body(TicketResponse.class);
         }catch (HttpClientErrorException.NotFound exception){
             throw new TicketNotFoundException(ticketId);
+        }
+    }
+
+    public SeatPageResponse getSeats(
+            Integer trainSetId,
+            String carriageNumber
+    ) {
+        return restClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path(
+                                "train-sets/{trainSetId}/carriages/{carriageNumber}/seats"
+                        )
+                        .queryParam("page", 1)
+                        .queryParam("size", 100)
+                        .build(trainSetId, carriageNumber)
+                )
+                .retrieve()
+                .body(SeatPageResponse.class);
+    }
+    public Optional<TicketResponse> tryCreateTicket(
+            TicketCreateRequest request
+    ) {
+        try {
+            TicketResponse ticket = restClient.post()
+                    .uri("tickets")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
+                    .retrieve()
+                    .body(TicketResponse.class);
+
+            return Optional.ofNullable(ticket);
+
+        } catch (HttpClientErrorException.Conflict exception) {
+            return Optional.empty();
         }
     }
 }

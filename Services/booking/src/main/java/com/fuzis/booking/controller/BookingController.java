@@ -28,4 +28,19 @@ public class BookingController {
                 sessionToken
         );
     }
+
+    @PostMapping("/tickets/{ticketId}/sell-with-discount")
+    public BookResponse bookTicketWithDiscount(
+            @PathVariable("ticketId") Long ticketId,
+            @RequestParam("passengerId") UUID passengerId,
+            @RequestParam("discount") Integer discount,
+            @CookieValue("SESSION") String sessionToken
+    ) {
+        return bookingService.bookTicketWithDiscount(
+                ticketId,
+                passengerId,
+                discount,
+                sessionToken
+        );
+    }
 }
