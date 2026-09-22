@@ -1,0 +1,360 @@
+openapi: 3.0.3
+
+info:
+  title: Booking Service API
+  version: "1.0"
+  description: |
+    REST API сервиса бронирования и продажи железнодорожных билетов.
+
+servers:
+  - url: http://localhost:8080/booking
+    description: Local Tomcat
+
+tags:
+  - name: Booking
+    description: Операции продажи и создания билетов
+
+paths:
+
+  /api/v1/booking/tickets/{ticketId}/sell:
+
+    post:
+      tags:
+        - Booking
+
+      operationId: sellTicket
+
+      summary: Продать существующий билет
+
+      description: |
+        Получает существующий билет из Tickets Service,
+        проверяет пассажира через Clients Service
+        и сохраняет факт продажи в базе Booking.
+
+      security:
+        - cookieSession: []
+
+      parameters:
+
+        - name: ticketId
+          in: path
+          required: true
+          description: ID продаваемого билета
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+
+        - name: passengerId
+          in: query
+          required: true
+          description: UUID пассажира, которому продаётся билет
+          schema:
+            type: string
+            format: uuid
+
+      responses:
+
+        "200":
+          description: Билет успешно продан
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponse"
+
+        "400":
+          description: Некорректные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+        "401":
+          description: |
+            Сессия отсутствует, истекла или недействительна.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: UNAUTHORIZED
+                message: Authentication required or session is invalid
+
+        "403":
+          description: |
+            Пользователь не имеет доступа к указанному пассажиру.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: ACCESS_DENIED
+                message: Access to passenger is forbidden
+
+        "404":
+          description: |
+            Билет или пассажир не найден.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+
+                ticketNotFound:
+                  value:
+                    code: TICKET_NOT_FOUND
+                    message: Ticket with ID 123 not found.
+
+                passengerNotFound:
+                  value:
+                    code: PASSENGER_NOT_FOUND
+                    message: Passenger 11111111-1111-1111-1111-111111111111 not found
+
+        "409":
+          description: |
+            Билет уже был продан или билет не имеет цены.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+
+                alreadyBooked:
+                  value:
+                    code: TICKET_ALREADY_BOOKED
+                    message: Ticket 1 is already booked
+
+                ticketWithoutPrice:
+                  value:
+                    code: TICKET_WITHOUT_PRICE
+                    message: Ticket 1 has no price
+
+
+  /api/v1/booking/tickets/{ticketId}/sell-with-discount:
+
+    post:
+      tags:
+        - Booking
+
+      operationId: createAndSellTicketWithDiscount
+
+      summary: Создать новый билет с изменённой ценой и продать его
+
+      description: |
+        Создаёт новый билет на основе указанного билета.
+
+        Алгоритм:
+
+        1. Booking получает исходный билет из Tickets Service.
+        2. Проверяет существование и доступность пассажира.
+        3. Вычисляет новую базовую цену
+        4. Значение `discount` нового билета устанавливается
+           равным переданному проценту.
+        5. Booking ищет другое свободное место
+           в том же вагоне.
+        6. Через Tickets Service создаётся новый билет.
+        7. Новый билет сразу продаётся пассажиру.
+        8. В Booking сохраняется ссылка на исходный билет
+           как `source_ticket_id`.
+
+      security:
+        - cookieSession: []
+
+      parameters:
+
+        - name: ticketId
+          in: path
+          required: true
+          description: |
+            ID исходного билета, на основе которого
+            будет создан новый билет.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+
+        - name: passengerId
+          in: query
+          required: true
+          description: UUID пассажира
+          schema:
+            type: string
+            format: uuid
+
+        - name: discount
+          in: query
+          required: true
+          description: |
+            Процент, на который увеличивается базовая цена.
+
+            Это же значение устанавливается
+            в поле discount нового билета.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 20
+
+      responses:
+
+        "200":
+          description: |
+            Новый билет успешно создан и продан пассажиру.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponse"
+              example:
+                ticketId: 2
+                passengerId: 0d64286b-145c-42fe-af80-725192cbcb07
+                price: 6000.00
+
+        "400":
+          description: |
+            Некорректные параметры запроса,
+            например discount меньше 1 или больше 100.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: INVALID_DISCOUNT
+                message: "Discount must be between 1 and 100, actual: 120"
+
+        "401":
+          description: |
+            Сессия отсутствует, истекла или недействительна.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: UNAUTHORIZED
+                message: Authentication required or session is invalid
+
+        "403":
+          description: |
+            Пользователь не имеет доступа к указанному пассажиру.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                code: ACCESS_DENIED
+                message: Access to passenger is forbidden
+
+        "404":
+          description: |
+            Исходный билет или пассажир не найден.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+
+                ticketNotFound:
+                  value:
+                    code: TICKET_NOT_FOUND
+                    message: Ticket with ID 123 not found.
+
+                passengerNotFound:
+                  value:
+                    code: PASSENGER_NOT_FOUND
+                    message: Passenger 11111111-1111-1111-1111-111111111111 not found
+
+        "409":
+          description: |
+            Операция не может быть выполнена из-за
+            текущего состояния данных.
+
+            Например:
+            - исходный билет не имеет цены;
+            - в вагоне отсутствует свободное место.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+
+                noAvailableSeat:
+                  value:
+                    code: NO_AVAILABLE_SEAT
+                    message: No available seat found for ticket 1
+
+                ticketWithoutPrice:
+                  value:
+                    code: TICKET_WITHOUT_PRICE
+                    message: Ticket 1 has no price
+
+
+components:
+
+  securitySchemes:
+
+    cookieSession:
+      type: apiKey
+      in: cookie
+      name: SESSION
+      description: |
+        Сессионная cookie пользователя.
+
+        Booking передаёт SESSION в Clients Service
+        для проверки доступа пользователя к пассажиру.
+
+
+  schemas:
+
+    BookResponse:
+      type: object
+
+      required:
+        - ticketId
+        - passengerId
+        - price
+
+      properties:
+
+        ticketId:
+          type: integer
+          format: int64
+          minimum: 1
+          description: |
+            ID проданного билета.
+
+            Для операции sell-with-discount это ID
+            вновь созданного билета.
+          example: 2
+
+        passengerId:
+          type: string
+          format: uuid
+          description: UUID пассажира
+          example: 0d64286b-145c-42fe-af80-725192cbcb07
+
+        price:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          description: Цена, за которую был продан билет
+          example: 6000.00
+
+
+    ErrorResponse:
+      type: object
+
+      required:
+        - code
+        - message
+
+      properties:
+
+        code:
+          type: string
+          description: Машиночитаемый код ошибки
+          example: TICKET_ALREADY_BOOKED
+
+        message:
+          type: string
+          description: Человекочитаемое описание ошибки
+          example: Ticket 1 is already booked
