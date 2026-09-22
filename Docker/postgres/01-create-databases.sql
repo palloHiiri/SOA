@@ -15,3 +15,6 @@ WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'clients')\gexec
 
 SELECT 'CREATE DATABASE tickets OWNER postgres'
 WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'tickets')\gexec
+
+SELECT 'CREATE DATABASE booking OWNER postgres'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'booking')\gexec

@@ -24,3 +24,4 @@ run_backend "clients" "clients" "clients/changelog-master.xml"
 run_backend "inventory" "inventory" "inventory/changelog-master.xml"
 
 run_backend "tickets" "tickets" "tickets/changelog-master.xml"
+run_backend "booking" "booking" "booking/changelog-master.xml"
