@@ -10,7 +10,7 @@ info:
     train sets, train-set carriages and seats are read-only projections of those snapshots.
 
 servers:
-  - url: http://localhost:8082/api/v1/tickets
+  - url: http://157.22.189.188:8082/api/v1/tickets
     description: Nginx server port
   - url: http://localhost:4455/api/v1/tickets
     description: Oathkeeper gateway port
