@@ -16,7 +16,7 @@ public class WebConfig implements WebFluxConfigurer {
         "http://localhost:5173",
         "https://localhost:8443",
         "https://127.0.0.1:8443",
-        "https://http://157.22.189.188:8443"
+        "https://157.22.189.188:8443"
         );
     }
 }
