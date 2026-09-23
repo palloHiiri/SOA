@@ -1241,3 +1241,83 @@ body {
 .route-table-wrapper {
   overflow-x: auto;
 }
+
+.passenger-tickets-button {
+  width: 100%;
+
+  margin-top: 14px;
+  padding: 9px 12px;
+
+  border: 1px solid var(--cobalt);
+  border-radius: 4px;
+
+  background: var(--parade-white);
+  color: var(--cobalt);
+
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.passenger-tickets-button:hover {
+  background: var(--ice);
+}
+
+.passenger-tickets {
+  margin-top: 12px;
+  padding-top: 12px;
+
+  border-top: 1px solid rgba(30, 63, 102, 0.2);
+}
+
+.passenger-tickets-header {
+  margin-bottom: 10px;
+
+  color: var(--cobalt);
+  font-size: 13px;
+}
+
+.passenger-ticket-list {
+  display: grid;
+  gap: 8px;
+}
+
+.passenger-ticket-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+
+  padding: 10px;
+
+  border: 1px solid rgba(30, 63, 102, 0.25);
+  border-radius: 4px;
+
+  background: var(--snow);
+}
+
+.passenger-ticket-item > div {
+  display: grid;
+  gap: 2px;
+}
+
+.passenger-ticket-item span {
+  color: var(--rock);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.passenger-ticket-item strong {
+  color: var(--anthracite);
+  font-size: 13px;
+}
+
+.passenger-tickets-message {
+  padding: 10px;
+
+  color: var(--rock);
+
+  font-size: 12px;
+  text-align: center;
+}

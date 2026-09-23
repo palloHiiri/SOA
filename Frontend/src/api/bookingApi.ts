@@ -55,3 +55,29 @@ export async function sellTicketWithDiscount(
 
   return readResponse(response);
 }
+
+export async function fetchPassengerTickets(
+  passengerId: string,
+): Promise<BookResponse[]> {
+  const response = await fetch(
+    `${BOOKING_BASE_URL}/passengers/${passengerId}/tickets`,
+    {
+      credentials: "include",
+    },
+  );
+
+  if (!response.ok) {
+    let error: BookingError | null = null;
+
+    try {
+      error = await response.json();
+    } catch {}
+
+    throw new Error(
+      error?.message ??
+        `Failed to load passenger tickets: ${response.status}`,
+    );
+  }
+
+  return response.json();
+}

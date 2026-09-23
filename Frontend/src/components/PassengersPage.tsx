@@ -2,7 +2,11 @@ import { type FormEvent, useState } from "react";
 
 import type { Passenger, PassengerCreateRequest } from "../types/passenger";
 
+import type { BookResponse } from "../types/booking";
+
 import { createPassenger } from "../api/passengerApi";
+
+import { fetchPassengerTickets } from "../api/bookingApi";
 
 interface PassengersPageProps {
   passengers: Passenger[];
@@ -61,6 +65,22 @@ export function PassengersPage({
 
   const [creating, setCreating] = useState(false);
 
+  const [openedPassengerId, setOpenedPassengerId] = useState<string | null>(
+    null,
+  );
+
+  const [passengerTickets, setPassengerTickets] = useState<
+    Record<string, BookResponse[]>
+  >({});
+
+  const [ticketsLoadingFor, setTicketsLoadingFor] = useState<string | null>(
+    null,
+  );
+
+  const [ticketsErrors, setTicketsErrors] = useState<Record<string, string>>(
+    {},
+  );
+
   function resetForm() {
     setFirstName("");
     setMiddleName("");
@@ -96,7 +116,9 @@ export function PassengersPage({
 
     const request: PassengerCreateRequest = {
       firstName: firstName.trim(),
+
       middleName: middleName.trim(),
+
       lastName: lastName.trim(),
 
       documentTypeId,
@@ -121,6 +143,7 @@ export function PassengersPage({
       onPassengerCreated(passenger);
 
       resetForm();
+
       setFormOpened(false);
     } catch (err) {
       setFormError(
@@ -131,17 +154,63 @@ export function PassengersPage({
     }
   }
 
+  async function handleTicketsClick(passengerId: string) {
+    if (openedPassengerId === passengerId) {
+      setOpenedPassengerId(null);
+
+      return;
+    }
+    setOpenedPassengerId(passengerId);
+
+    if (passengerTickets[passengerId] !== undefined) {
+      return;
+    }
+
+    try {
+      setTicketsLoadingFor(passengerId);
+
+      setTicketsErrors((current) => {
+        const copy = {
+          ...current,
+        };
+
+        delete copy[passengerId];
+
+        return copy;
+      });
+
+      const tickets = await fetchPassengerTickets(passengerId);
+
+      setPassengerTickets((current) => ({
+        ...current,
+
+        [passengerId]: tickets,
+      }));
+    } catch (err) {
+      setTicketsErrors((current) => ({
+        ...current,
+
+        [passengerId]:
+          err instanceof Error ? err.message : "Failed to load tickets",
+      }));
+    } finally {
+      setTicketsLoadingFor((current) =>
+        current === passengerId ? null : current,
+      );
+    }
+  }
+
   return (
     <section>
       <div className="section-header">
         <div>
           <h2>Passengers</h2>
-
         </div>
 
         <button
           type="button"
           className="add-ticket-button"
+
           onClick={() => setFormOpened(true)}
         >
           Add Passenger
@@ -158,62 +227,139 @@ export function PassengersPage({
 
       {!loading && !error && passengers.length > 0 && (
         <div className="passenger-grid">
-          {passengers.map((passenger) => (
-            <article className="passenger-card" key={passenger.id}>
-              <div className="passenger-card-header">
-                <div>
-                  <h3>
-                    {passenger.firstName} {passenger.middleName}{" "}
-                    {passenger.lastName}
-                  </h3>
+          {passengers.map((passenger) => {
+            const tickets = passengerTickets[passenger.id];
 
-                  <span>{passenger.documentTypeName}</span>
+            const ticketsOpened = openedPassengerId === passenger.id;
+
+            const ticketsLoading = ticketsLoadingFor === passenger.id;
+
+            const ticketsError = ticketsErrors[passenger.id];
+
+            return (
+              <article className="passenger-card" key={passenger.id}>
+                <div className="passenger-card-header">
+                  <div>
+                    <h3>
+                      {passenger.firstName} {passenger.middleName}{" "}
+                      {passenger.lastName}
+                    </h3>
+
+                    <span>{passenger.documentTypeName}</span>
+                  </div>
                 </div>
 
-              </div>
+                <dl className="passenger-info">
+                  <div>
+                    <dt>Document</dt>
 
-              <dl className="passenger-info">
-                <div>
-                  <dt>Document</dt>
+                    <dd>
+                      {passenger.documentSeriesNumber}{" "}
+                      {passenger.documentNumber}
+                    </dd>
+                  </div>
 
-                  <dd>
-                    {passenger.documentSeriesNumber} {passenger.documentNumber}
-                  </dd>
-                </div>
+                  <div>
+                    <dt>Birth date</dt>
 
-                <div>
-                  <dt>Birth date</dt>
+                    <dd>{passenger.birthDate}</dd>
+                  </div>
 
-                  <dd>{passenger.birthDate}</dd>
-                </div>
+                  <div>
+                    <dt>Email</dt>
 
-                <div>
-                  <dt>Email</dt>
+                    <dd>{passenger.email}</dd>
+                  </div>
 
-                  <dd>{passenger.email}</dd>
-                </div>
+                  <div>
+                    <dt>Phone</dt>
 
-                <div>
-                  <dt>Phone</dt>
+                    <dd>{passenger.phoneNumber ?? "—"}</dd>
+                  </div>
+                </dl>
 
-                  <dd>{passenger.phoneNumber ?? "—"}</dd>
-                </div>
-              </dl>
+                <div className="passenger-id">ID: {passenger.id}</div>
 
-              <div className="passenger-id">ID: {passenger.id}</div>
-            </article>
-          ))}
+                <button
+                  type="button"
+
+                  className="passenger-tickets-button"
+
+                  onClick={() => void handleTicketsClick(passenger.id)}
+                >
+                  {ticketsOpened ? "Hide tickets" : "Show tickets"}
+                </button>
+
+                {ticketsOpened && (
+                  <div className="passenger-tickets">
+                    <div className="passenger-tickets-header">
+                      <strong>Purchased tickets</strong>
+                    </div>
+
+                    {ticketsLoading && (
+                      <div className="passenger-tickets-message">
+                        Loading tickets...
+                      </div>
+                    )}
+
+                    {ticketsError && (
+                      <div className="booking-alert error">{ticketsError}</div>
+                    )}
+
+                    {!ticketsLoading &&
+                      !ticketsError &&
+                      tickets &&
+                      tickets.length === 0 && (
+                        <div className="passenger-tickets-message">
+                          No purchased tickets.
+                        </div>
+                      )}
+
+                    {!ticketsLoading &&
+                      !ticketsError &&
+                      tickets &&
+                      tickets.length > 0 && (
+                        <div className="passenger-ticket-list">
+                          {tickets.map((ticket) => (
+                            <div
+                              className="passenger-ticket-item"
+
+                              key={ticket.ticketId}
+                            >
+                              <div>
+                                <span>Ticket</span>
+
+                                <strong>#{ticket.ticketId}</strong>
+                              </div>
+
+                              <div>
+                                <span>Sale price</span>
+
+                                <strong>{ticket.price}</strong>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
 
       {formOpened && (
         <div
           className="modal-backdrop"
+
           onMouseDown={() => !creating && setFormOpened(false)}
         >
           <form
             className="booking-modal passenger-modal"
+
             onSubmit={handleSubmit}
+
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="modal-header">
@@ -226,6 +372,7 @@ export function PassengersPage({
               <button
                 type="button"
                 className="close-button"
+
                 onClick={() => setFormOpened(false)}
               >
                 ×
@@ -238,7 +385,8 @@ export function PassengersPage({
 
                 <input
                   value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+
+                  onChange={(event) => setFirstName(event.target.value)}
                 />
               </label>
 
@@ -247,7 +395,8 @@ export function PassengersPage({
 
                 <input
                   value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+
+                  onChange={(event) => setLastName(event.target.value)}
                 />
               </label>
             </div>
@@ -257,7 +406,8 @@ export function PassengersPage({
 
               <input
                 value={middleName}
-                onChange={(e) => setMiddleName(e.target.value)}
+
+                onChange={(event) => setMiddleName(event.target.value)}
               />
             </label>
 
@@ -266,7 +416,10 @@ export function PassengersPage({
 
               <select
                 value={documentTypeId}
-                onChange={(e) => setDocumentTypeId(Number(e.target.value))}
+
+                onChange={(event) =>
+                  setDocumentTypeId(Number(event.target.value))
+                }
               >
                 {DOCUMENT_TYPES.map((type) => (
                   <option key={type.id} value={type.id}>
@@ -282,7 +435,10 @@ export function PassengersPage({
 
                 <input
                   value={documentSeriesNumber}
-                  onChange={(e) => setDocumentSeriesNumber(e.target.value)}
+
+                  onChange={(event) =>
+                    setDocumentSeriesNumber(event.target.value)
+                  }
                 />
               </label>
 
@@ -291,7 +447,8 @@ export function PassengersPage({
 
                 <input
                   value={documentNumber}
-                  onChange={(e) => setDocumentNumber(e.target.value)}
+
+                  onChange={(event) => setDocumentNumber(event.target.value)}
                 />
               </label>
             </div>
@@ -301,8 +458,10 @@ export function PassengersPage({
 
               <input
                 type="date"
+
                 value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
+
+                onChange={(event) => setBirthDate(event.target.value)}
               />
             </label>
 
@@ -311,8 +470,10 @@ export function PassengersPage({
 
               <input
                 type="email"
+
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+
+                onChange={(event) => setEmail(event.target.value)}
               />
             </label>
 
@@ -321,9 +482,12 @@ export function PassengersPage({
 
               <input
                 type="tel"
+
                 value={phoneNumber}
+
                 placeholder="+79991234567"
-                onChange={(e) => setPhoneNumber(e.target.value)}
+
+                onChange={(event) => setPhoneNumber(event.target.value)}
               />
             </label>
 
@@ -335,7 +499,9 @@ export function PassengersPage({
               <button
                 type="button"
                 className="cancel-button"
+
                 disabled={creating}
+
                 onClick={() => setFormOpened(false)}
               >
                 Cancel
@@ -344,6 +510,7 @@ export function PassengersPage({
               <button
                 type="submit"
                 className="submit-booking-button"
+
                 disabled={creating}
               >
                 {creating ? "Creating..." : "Create passenger"}
