@@ -423,7 +423,7 @@ services:
       frontend-nginx:
         condition: service_healthy
     extra_hosts:
-      - "host.gateway:host-gateway"
+      - "host.docker.internal:host-gateway"
     ports:
       - "8443:8443"
     volumes:
