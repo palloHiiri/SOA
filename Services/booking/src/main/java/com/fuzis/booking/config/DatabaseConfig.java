@@ -15,8 +15,9 @@ public class DatabaseConfig {
     public DataSource dataSource() {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(
-                "jdbc:postgresql://157.22.189.188:5433/booking"
+            "jdbc:postgresql://postgres:5432/booking"
         );
+
         config.setDriverClassName("org.postgresql.Driver");
         config.setUsername("postgres");
         config.setPassword("postgres");
