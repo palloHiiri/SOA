@@ -7,7 +7,7 @@ info:
     REST API сервиса бронирования и продажи железнодорожных билетов.
 
 servers:
-  - url: http://157.22.189.188:8082
+  - url: https://157.22.189.188:8443
     description: Nginx server port
 
 tags:

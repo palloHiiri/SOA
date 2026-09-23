@@ -4,7 +4,7 @@ info:
   version: 0.0.1
   description: Reactive identity and session service used with Ory Oathkeeper and Ory Keto.
 servers:
-  - url: http://157.22.189.188:8082
+  - url: https://157.22.189.188:8443
     description: Nginx server port
 
 tags:

@@ -7,7 +7,7 @@ info:
     booking platform. Identity fields are mastered by sso-ident and exposed
     here as a read model. Passenger data is owned by clients.
 servers:
-  - url: http://157.22.189.188:8082
+  - url: https://157.22.189.188:8443
     description: Nginx server port
 
 tags:

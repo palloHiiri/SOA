@@ -9,7 +9,7 @@ info:
     read-only here and is projected from the latest JSONB CDC snapshot received from
     Inventory.
 servers:
-  - url: http://157.22.189.188:8082/api/v1/tickets
+  - url: https://157.22.189.188:8443/api/v1/tickets
     description: Nginx server port
 
 tags:
