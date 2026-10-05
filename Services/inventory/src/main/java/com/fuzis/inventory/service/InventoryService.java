@@ -35,6 +35,21 @@ public class InventoryService {
         }
     }
 
+    public TrainSetResponse findTrainSetByCodeAndBuildNumber(String code, int buildNumber) {
+        if (code == null || code.isBlank()) {
+            throw new BadRequestException("code must not be blank");
+        }
+        if (buildNumber <= 0) {
+            throw new BadRequestException("buildNumber must be positive");
+        }
+
+        TrainSetResponse result = repository.findTrainSetByCodeAndBuildNumber(code, buildNumber);
+        if (result == null) {
+            throw new NotFoundException("Train set not found");
+        }
+        return result;
+    }
+
     public TrainSetLifecycleResponse changeLifecycle(int trainSetId, TrainSetLifecycleRequest request) {
         String status = request.status().trim().toUpperCase(java.util.Locale.ROOT);
         try {

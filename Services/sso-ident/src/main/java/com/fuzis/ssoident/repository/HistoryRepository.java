@@ -20,7 +20,7 @@ public class HistoryRepository {
             SELECT write_user_sso_action_history(
                 CAST(:userId AS uuid), :action, CAST(:actorUserId AS uuid), CAST(:ip AS inet),
                 :userAgent, :success, CAST(:metadata AS jsonb)
-            )
+            ) AS history_id
             """;
         DatabaseClient.GenericExecuteSpec spec = db.sql(sql)
         .bind("userId", userId)
@@ -32,6 +32,9 @@ public class HistoryRepository {
         else spec = spec.bind("actorUserId", actorUserId);
         if (ip == null || ip.isBlank()) spec = spec.bindNull("ip", String.class);
         else spec = spec.bind("ip", ip);
-        return spec.fetch().rowsUpdated().then();
+
+        // This statement calls a PostgreSQL function through SELECT, so consume the returned row
+        // explicitly rather than relying on rowsUpdated() for a SELECT statement.
+        return spec.fetch().one().then();
     }
 }

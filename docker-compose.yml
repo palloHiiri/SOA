@@ -14,10 +14,11 @@ services:
       - ./Docker/postgres/01-create-databases.sql:/docker-entrypoint-initdb.d/01-create-databases.sql:ro
     command: ["postgres", "-c", "wal_level=logical", "-c", "max_wal_senders=4", "-c", "max_replication_slots=4"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres && for db in sso_ident keto inventory clients tickets booking; do psql -U postgres -d postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='$$db'\" | grep -q 1 || exit 1; done"]
       interval: 5s
       timeout: 3s
-      retries: 20
+      retries: 30
+      start_period: 10s
 
   sso-redis:
     image: redis:8-alpine
@@ -84,7 +85,8 @@ services:
         condition: service_healthy
     volumes:
       - ./Docker/redpanda/init-topics.sh:/init-topics.sh:ro
-    entrypoint: ["/bin/sh", "/init-topics.sh"]
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["tr -d '\\015' < /init-topics.sh > /tmp/init-topics.sh && exec /bin/sh /tmp/init-topics.sh"]
     environment:
       REDPANDA_BROKERS: redpanda:9092
 
@@ -177,7 +179,8 @@ services:
       CONNECTOR_CONFIG_DIR: /connectors
       MAX_ATTEMPTS: 10
       RETRY_DELAY_SECONDS: 3
-    entrypoint: ["/bin/sh", "/register-connector.sh"]
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["tr -d '\\015' < /register-connector.sh > /tmp/register-connector.sh && exec /bin/sh /tmp/register-connector.sh"]
 
   keto-migrate:
     image: oryd/keto:v26.2.0
@@ -219,7 +222,8 @@ services:
         condition: service_started
     volumes:
       - ./Docker/keto/init.sh:/init.sh:ro
-    command: ["sh", "/init.sh"]
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["tr -d '\\015' < /init.sh > /tmp/init.sh && exec /bin/sh /tmp/init.sh"]
 
   liquibase:
     image: liquibase:4.33
@@ -231,10 +235,14 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      MAX_ATTEMPTS: 10
+      RETRY_DELAY_SECONDS: 3
+      CONNECT_TIMEOUT_SECONDS: 3
     volumes:
       - ./Database:/liquibase/changelog:ro
       - ./Docker/liquibase/migrate.sh:/liquibase/migrate.sh:ro
-    command: ["sh", "/liquibase/migrate.sh"]
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["tr -d '\\015' < /liquibase/migrate.sh > /tmp/migrate.sh && exec /bin/sh /tmp/migrate.sh"]
 
   sso-ident:
     build:
@@ -476,13 +484,42 @@ services:
       SYSTEM_ADMIN_EMAIL: ${SYSTEM_ADMIN_EMAIL:-sys@system.local}
       SYSTEM_ADMIN_USERNAME: ${SYSTEM_ADMIN_USERNAME:-sys}
       SYSTEM_ADMIN_PASSWORD: ${SYSTEM_ADMIN_PASSWORD:-system123}
+      MAX_ATTEMPTS: 10
+      RETRY_DELAY_SECONDS: 3
+      CURL_CONNECT_TIMEOUT_SECONDS: 3
+      REGISTER_MAX_TIME_SECONDS: 30
+      CURL_MAX_TIME_SECONDS: 3
     volumes:
       - sso_admin_state:/state
       - ./Docker/sso-ident-system-admin-init.sh:/init.sh:ro
-    command: ["sh", "/init.sh"]
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["tr -d '\\015' < /init.sh > /tmp/init.sh && exec /bin/sh /tmp/init.sh"]
+
+  inventory-train-set-init:
+    image: curlimages/curl:8.16.0
+    container_name: inventory-train-set-init
+    restart: "no"
+    user: root
+    depends_on:
+      sso-ident-system-admin-init:
+        condition: service_completed_successfully
+    environment:
+      API_BASE_URL: http://oathkeeper:4455
+      SYSTEM_ADMIN_USERNAME: ${SYSTEM_ADMIN_USERNAME:-sys}
+      SYSTEM_ADMIN_PASSWORD: ${SYSTEM_ADMIN_PASSWORD:-system123}
+      MAX_ATTEMPTS: 5
+      RETRY_DELAY_SECONDS: 3
+      CURL_CONNECT_TIMEOUT_SECONDS: 10
+      CURL_MAX_TIME_SECONDS: 180
+    volumes:
+      - inventory_train_set_state:/state
+      - ./Docker/inventory-train-set-init.sh:/init.sh:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["tr -d '\\015' < /init.sh > /tmp/init.sh && exec /bin/sh /tmp/init.sh"]
 
 volumes:
   postgres_data:
   redis_data:
   redpanda_data:
   sso_admin_state:
+  inventory_train_set_state:

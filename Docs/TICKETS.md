@@ -248,30 +248,26 @@ The deployed WAR uses `/` as its WildFly context root, so the effective applicat
 ```text
 POST   /api/v1/tickets/tickets
 GET    /api/v1/tickets/tickets
+POST   /api/v1/tickets/search
 GET    /api/v1/tickets/tickets/{id}
 PUT    /api/v1/tickets/tickets/{id}
 DELETE /api/v1/tickets/tickets/{id}
 ```
 
-Collection GET supports:
+The search endpoint accepts a JSON body:
 
-```text
-page
-size
-sort
-id
-name
-creationDate
-venueId
-carriageNumber
-seatNumber
-refundable
-type
-basePrice
-discount
+```json
+{
+  "expression": "express",
+  "page": 1,
+  "size": 20,
+  "sort": ["id,asc"]
+}
 ```
 
-`basePrice` and `discount` filters operate on the latest price-history row of each ticket.
+`expression` is matched case-insensitively as `ILIKE '%{expression}%'` against the textual representation of all ticket fields and the related Venue name/train-set identifier. Numeric, boolean, enum and date values are cast to text for searching. An empty expression returns the normal complete collection, subject to pagination and sorting.
+
+The search endpoint is the frontend's primary ticket lookup API; the legacy collection GET remains available for direct collection access and compatibility.
 
 ### Venues
 

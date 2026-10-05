@@ -4,7 +4,7 @@ This repository contains the current SOA lab infrastructure and services. The ma
 
 ## Current state
 
-- `sso-ident` is a Spring Boot/WebFlux reactive identity and session service, built as a GraalVM Native Image.
+- `sso-ident` is a Spring Boot/WebFlux reactive identity and session service, packaged as a regular JVM application (Java 21).
 - Ory Keto provides relationship-based authorization.
 - Ory Oathkeeper is the reverse proxy and authentication/authorization enforcement point.
 - PostgreSQL is shared as one container but separated into dedicated databases.
@@ -13,8 +13,8 @@ This repository contains the current SOA lab infrastructure and services. The ma
 - Debezium 3.5.2.Final runs as a Kafka Connect cluster and captures the SSO CDC table from PostgreSQL.
 - Kafka topic creation is disabled at the broker and in Kafka Connect; topics are provisioned by `Docker/redpanda/init-topics.sh`.
 - `Services/sso-ident` publishes registration and verification events directly to Redpanda.
-- `Services/clients` consumes the registration and identity-update topics directly; the old RabbitMQ shovel topology is gone. It is also built as a GraalVM Native Image.
-- `inventory` is the master service/database for train-set and rolling-stock reference data. Its current MVC API imports complete train sets and changes lifecycle; it publishes complete train-set snapshots through Debezium to Redpanda and is built as a GraalVM Native Image.
+- `Services/clients` consumes the registration and identity-update topics directly; the old RabbitMQ shovel topology is gone. It is packaged as a regular JVM application (Java 21).
+- `inventory` is the master service/database for train-set and rolling-stock reference data. Its current MVC API imports complete train sets and changes lifecycle; it publishes complete train-set snapshots through Debezium to Redpanda and is packaged as a regular JVM application (Java 21).
 - `tickets` is the educational JAX-RS/WildFly ticket service, packaged as a WAR and consuming Inventory CDC snapshots from Redpanda.
 
 ## Quick start
@@ -22,6 +22,8 @@ This repository contains the current SOA lab infrastructure and services. The ma
 ```bash
 docker compose up -d --build
 ```
+
+The Compose startup includes retry-safe PostgreSQL migrations and system-admin bootstrap. Docker shell scripts are normalized to LF before execution, so Git CRLF checkout does not break entrypoints.
 
 For application database migrations only:
 

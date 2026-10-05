@@ -1,6 +1,8 @@
 package com.fuzis.booking.config;
 
 import com.zaxxer.hikari.HikariConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +12,8 @@ import javax.sql.DataSource;
 
 @Configuration
 public class DatabaseConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(DatabaseConfig.class);
 
     @Bean
     public DataSource dataSource() {
@@ -23,6 +27,9 @@ public class DatabaseConfig {
         config.setPassword("postgres");
 
         config.setMaximumPoolSize(5);
+
+        log.info("Initializing booking PostgreSQL datasource: url={}, maxPoolSize={}",
+                config.getJdbcUrl(), config.getMaximumPoolSize());
 
         return new HikariDataSource(config);
     }

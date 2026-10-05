@@ -4,31 +4,55 @@ import com.fuzis.booking.client.dto.SeatPageResponse;
 import com.fuzis.booking.client.dto.TicketCreateRequest;
 import com.fuzis.booking.client.dto.TicketResponse;
 import com.fuzis.booking.exception.TicketNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Optional;
 
 @Component
 public class TicketsClient {
+    private static final Logger log = LoggerFactory.getLogger(TicketsClient.class);
+
     private final RestClient restClient;
 
-    public TicketsClient(){
+    public TicketsClient() {
         this.restClient = RestClient.builder()
-                .baseUrl("http://157.22.189.188:8082/api/v1/tickets/")
+                .baseUrl("http://sso-oathkeeper:4455/api/v1/tickets/")
                 .build();
+
+        log.info("TicketsClient initialized with internal Oathkeeper endpoint");
     }
 
-    public TicketResponse getTicket(Long ticketId){
+    public TicketResponse getTicket(Long ticketId) {
+        long startedAt = System.nanoTime();
+        log.debug("Calling tickets service: getTicket ticketId={}", ticketId);
+
         try {
-            return restClient.get()
+            TicketResponse response = restClient.get()
                     .uri("tickets/{ticketId}", ticketId)
                     .retrieve()
                     .body(TicketResponse.class);
-        }catch (HttpClientErrorException.NotFound exception){
+
+            log.info("Tickets service returned ticket: ticketId={}, elapsedMs={}",
+                    ticketId, elapsedMs(startedAt));
+            return response;
+        } catch (HttpClientErrorException.NotFound exception) {
+            log.warn("Ticket not found: ticketId={}, status={}", ticketId, exception.getStatusCode());
             throw new TicketNotFoundException(ticketId);
+        } catch (RestClientResponseException exception) {
+            log.error("Tickets service returned unexpected HTTP error: ticketId={}, status={}, elapsedMs={}, body={}",
+                    ticketId, exception.getStatusCode(), elapsedMs(startedAt),
+                    truncate(exception.getResponseBodyAsString()), exception);
+            throw exception;
+        } catch (RuntimeException exception) {
+            log.error("Tickets service call failed: ticketId={}, elapsedMs={}, exception={}",
+                    ticketId, elapsedMs(startedAt), exception.toString(), exception);
+            throw exception;
         }
     }
 
@@ -36,21 +60,38 @@ public class TicketsClient {
             Integer trainSetId,
             String carriageNumber
     ) {
-        return restClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path(
-                                "train-sets/{trainSetId}/carriages/{carriageNumber}/seats"
-                        )
-                        .queryParam("page", 1)
-                        .queryParam("size", 100)
-                        .build(trainSetId, carriageNumber)
-                )
-                .retrieve()
-                .body(SeatPageResponse.class);
+        long startedAt = System.nanoTime();
+        log.debug("Calling tickets service: getSeats trainSetId={}, carriageNumber={}",
+                trainSetId, carriageNumber);
+
+        try {
+            SeatPageResponse response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("train-sets/{trainSetId}/carriages/{carriageNumber}/seats")
+                            .queryParam("page", 1)
+                            .queryParam("size", 100)
+                            .build(trainSetId, carriageNumber)
+                    )
+                    .retrieve()
+                    .body(SeatPageResponse.class);
+
+            log.info("Tickets service returned seats: trainSetId={}, carriageNumber={}, elapsedMs={}",
+                    trainSetId, carriageNumber, elapsedMs(startedAt));
+            return response;
+        } catch (RuntimeException exception) {
+            log.error("Tickets service getSeats failed: trainSetId={}, carriageNumber={}, elapsedMs={}, exception={}",
+                    trainSetId, carriageNumber, elapsedMs(startedAt), exception.toString(), exception);
+            throw exception;
+        }
     }
+
     public Optional<TicketResponse> tryCreateTicket(
             TicketCreateRequest request
     ) {
+        long startedAt = System.nanoTime();
+        log.debug("Calling tickets service: tryCreateTicket name={}, carriage={}, seat={}",
+                request.name(), request.carriageNumber(), request.seatNumber());
+
         try {
             TicketResponse ticket = restClient.post()
                     .uri("tickets")
@@ -59,17 +100,53 @@ public class TicketsClient {
                     .retrieve()
                     .body(TicketResponse.class);
 
+            log.info("Tickets service created ticket: ticketId={}, elapsedMs={}",
+                    ticket == null ? null : ticket.id(), elapsedMs(startedAt));
             return Optional.ofNullable(ticket);
 
         } catch (HttpClientErrorException.Conflict exception) {
+            log.debug("Ticket creation conflict (seat already occupied): carriage={}, seat={}",
+                    request.carriageNumber(), request.seatNumber());
             return Optional.empty();
+        } catch (RestClientResponseException exception) {
+            log.error("Tickets service returned unexpected ticket-creation error: status={}, elapsedMs={}, body={}",
+                    exception.getStatusCode(), elapsedMs(startedAt),
+                    truncate(exception.getResponseBodyAsString()), exception);
+            throw exception;
+        } catch (RuntimeException exception) {
+            log.error("Ticket creation call failed: carriage={}, seat={}, elapsedMs={}, exception={}",
+                    request.carriageNumber(), request.seatNumber(), elapsedMs(startedAt), exception.toString(), exception);
+            throw exception;
         }
     }
 
     public void deleteTicket(Long ticketId) {
-        restClient.delete()
-                .uri("tickets/{ticketId}", ticketId)
-                .retrieve()
-                .toBodilessEntity();
+        long startedAt = System.nanoTime();
+        log.warn("Deleting compensating ticket: ticketId={}", ticketId);
+
+        try {
+            restClient.delete()
+                    .uri("tickets/{ticketId}", ticketId)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("Compensating ticket deleted: ticketId={}, elapsedMs={}",
+                    ticketId, elapsedMs(startedAt));
+        } catch (RuntimeException exception) {
+            log.error("Compensating ticket deletion failed: ticketId={}, elapsedMs={}, exception={}",
+                    ticketId, elapsedMs(startedAt), exception.toString(), exception);
+            throw exception;
+        }
+    }
+
+    private static long elapsedMs(long startedAt) {
+        return (System.nanoTime() - startedAt) / 1_000_000;
+    }
+
+    private static String truncate(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() <= 1000 ? value : value.substring(0, 1000) + "...";
     }
 }

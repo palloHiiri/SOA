@@ -1,7 +1,7 @@
 # Inventory Service
 
 `inventory` is the master service for rolling-stock reference data, train-set compositions and train-set lifecycle.
-The service uses Spring Boot MVC with PostgreSQL/JDBC and is built as a GraalVM Native Image.
+The service uses Spring Boot MVC with PostgreSQL/JDBC and is packaged as a regular JVM application (Java 21).
 
 ## Responsibilities
 
@@ -159,3 +159,7 @@ Redpanda: inventory.train_set_snapshots
 ```
 
 Only `train_set_cdc` is published. Downstream services receive one complete aggregate snapshot per active version rather than reconstructing the normalized tables themselves.
+
+## Local demo train sets
+
+The local Compose stack contains a one-shot `inventory-train-set-init` container. It runs only after `sso-ident-system-admin-init` succeeds, logs in through Oathkeeper as the bootstrap `sys` user, imports two conflict-free train sets, and activates train-set IDs `1` and `2`. Entering `ACTIVE` triggers the existing PostgreSQL CDC snapshot flow.

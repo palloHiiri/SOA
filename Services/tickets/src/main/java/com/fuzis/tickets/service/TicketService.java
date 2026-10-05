@@ -3,6 +3,7 @@ package com.fuzis.tickets.service;
 import com.fuzis.tickets.dto.PageResponse;
 import com.fuzis.tickets.dto.TicketCreateRequest;
 import com.fuzis.tickets.dto.TicketResponse;
+import com.fuzis.tickets.dto.TicketSearchRequest;
 import com.fuzis.tickets.dto.TicketType;
 import com.fuzis.tickets.dto.TicketUpdateRequest;
 import com.fuzis.tickets.exception.ApiException;
@@ -104,6 +105,42 @@ public class TicketService {
         }
         catch (SQLException e) {
             throw databaseError(e);
+        }
+    }
+
+    public PageResponse<TicketResponse> search(TicketSearchRequest request) {
+        if (request == null) {
+            throw ApiException.badRequest("Request body is required");
+        }
+
+        return list(
+        request.getPage(),
+        request.getSize(),
+        request.getSort(),
+        request.getId(),
+        request.getName(),
+        parseCreationDate(request.getCreationDate()),
+        request.getVenueId(),
+        request.getTrainSetId(),
+        request.getCarriageNumber(),
+        request.getSeatNumber(),
+        request.getRefundable(),
+        request.getType(),
+        request.getBasePrice(),
+        request.getDiscount());
+    }
+
+    private LocalDate parseCreationDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        try {
+            return LocalDate.parse(value);
+        }
+        catch (java.time.format.DateTimeParseException e) {
+            throw ApiException.badRequest(
+            "Field 'creationDate' must be a valid ISO-8601 date");
         }
     }
 

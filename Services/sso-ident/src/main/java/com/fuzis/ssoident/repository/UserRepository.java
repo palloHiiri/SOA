@@ -27,6 +27,9 @@ public class UserRepository {
         return db.sql(sql).bind("login", login).map((row, meta) -> row.get("exists", Boolean.class)).one();
     }
 
+    /**
+     * Authentication lookup: only ACTIVE users are eligible to log in.
+     */
     public Mono<UUID> findUserIdByLogin(String login) {
         String sql = """
             SELECT ua.user_id
@@ -40,6 +43,45 @@ public class UserRepository {
             LIMIT 1
             """;
         return db.sql(sql).bind("login", login).map((row, meta) -> row.get("user_id", UUID.class)).one();
+    }
+
+    /**
+     * Registration recovery lookup: deliberately includes PENDING users.
+     */
+    public Mono<RegistrationData> findRegistrationByLogin(String login) {
+        String sql = """
+            SELECT u.id AS user_id,
+                   us.code AS status,
+                   MAX(ua.value) FILTER (WHERE a.code = 'email') AS email,
+                   MAX(ua.value) FILTER (WHERE a.code = 'username') AS username,
+                   MAX(ua.value) FILTER (WHERE a.code = 'first_name') AS first_name,
+                   MAX(ua.value) FILTER (WHERE a.code = 'last_name') AS last_name
+            FROM users u
+            JOIN user_statuses us ON us.id = u.status_id
+            JOIN user_attributes ua ON ua.user_id = u.id
+            JOIN attributes a ON a.id = ua.attribute_id
+            WHERE EXISTS (
+                SELECT 1
+                FROM user_attributes login_ua
+                JOIN attributes login_a ON login_a.id = login_ua.attribute_id
+                WHERE login_ua.user_id = u.id
+                  AND login_a.code IN ('email', 'username')
+                  AND LOWER(login_ua.value) = LOWER(:login)
+            )
+            GROUP BY u.id, us.code
+            LIMIT 1
+            """;
+        return db.sql(sql)
+        .bind("login", login)
+        .map((row, meta) -> new RegistrationData(
+            row.get("user_id", UUID.class),
+            row.get("status", String.class),
+            row.get("email", String.class),
+            row.get("username", String.class),
+            row.get("first_name", String.class),
+            row.get("last_name", String.class)
+        ))
+        .one();
     }
 
     public Mono<UUID> findActiveUserIdByEmail(String email) {
@@ -89,7 +131,9 @@ public class UserRepository {
             JOIN credential_types ct ON ct.id = uc.credential_type_id
             WHERE uc.user_id = :userId AND ct.code = 'PASSWORD'
             LIMIT 1
-            """).bind("userId", userId).map((row, meta) -> row.get("secret_hash", String.class)).one();
+            """)
+        .bind("userId", userId)
+        .map((row, meta) -> row.get("secret_hash", String.class)).one();
     }
 
     public Mono<Boolean> isEmail2faEnabled(UUID userId) {
@@ -97,7 +141,9 @@ public class UserRepository {
             SELECT COALESCE((SELECT ua.value::boolean
                FROM user_attributes ua JOIN attributes a ON a.id = ua.attribute_id
                WHERE ua.user_id = :userId AND a.code = 'email_2fa_enabled'), false) AS enabled
-            """).bind("userId", userId).map((row, meta) -> row.get("enabled", Boolean.class)).one();
+            """)
+        .bind("userId", userId)
+        .map((row, meta) -> row.get("enabled", Boolean.class)).one();
     }
 
     public Mono<String> findAttribute(UUID userId, String code) {
@@ -118,4 +164,13 @@ public class UserRepository {
         .map((row, meta) -> java.util.Map.entry(row.get("code", String.class), row.get("value", String.class)))
         .all().collectMap(java.util.Map.Entry::getKey, java.util.Map.Entry::getValue);
     }
+
+    public record RegistrationData(
+        UUID userId,
+        String status,
+        String email,
+        String username,
+        String firstName,
+        String lastName
+    ) {}
 }

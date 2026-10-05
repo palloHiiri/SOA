@@ -102,7 +102,9 @@ both integrations succeed?
                +--> integration failure recorded in history
 ```
 
-The implementation therefore does not treat successful PostgreSQL insertion alone as successful registration.
+The implementation therefore does not treat successful PostgreSQL insertion alone as successful registration. A `PENDING` registration is recoverable: if the same credentials are submitted again, the service verifies the password against the stored credential and resumes the Kafka/Keto integration for the existing user instead of creating another account.
+
+Password hashing and verification with Argon2 run on Reactor's bounded elastic scheduler rather than on the Netty event-loop. The registration workflow is cached after subscription so a client-side timeout or disconnect does not cancel an already committed registration workflow.
 
 ## Login and MFA flow
 
@@ -282,6 +284,8 @@ environment:
 
 The bootstrap container keeps the generated user UUID in the `sso_admin_state` named volume, so a normal Compose restart does not try to register the same administrator a second time. Removing that volume intentionally resets the bootstrap state; when resetting the database, remove the Compose volumes together as well.
 
+The bootstrap is retry-safe: network/startup failures (`HTTP 000`, `5xx`, `429`) are retried with a 3-second connection timeout and up to 10 attempts. Registration itself gets a longer 30-second total timeout because it performs Argon2 hashing plus database and integration work. If the first request committed a `PENDING` user but its HTTP response was lost, repeating the same registration request verifies the configured password and resumes that existing user. If the user was already activated, the script falls back to login to recover the persisted `userId`. The Admin membership request is also retried and treats `409 Conflict` as an already-completed/idempotent result.
+
 ## Oathkeeper + Keto authorization
 
 For `/api/v1/sso-ident/me`:
@@ -409,4 +413,4 @@ External SSO Ident traffic enters Oathkeeper on port 4455. The Oathkeeper rule s
 
 ## Runtime
 
-`sso-ident` remains a WebFlux/R2DBC reactive service, but the application is packaged as a GraalVM Native Image. Database migrations are externalized to the repository-level Liquibase container; Liquibase is intentionally not a runtime dependency of `sso-ident`.
+`sso-ident` remains a WebFlux/R2DBC reactive service and is packaged as a regular JVM application (Java 21). The Docker image runs the Spring Boot executable JAR with the Java runtime. Database migrations are externalized to the repository-level Liquibase container; Liquibase is intentionally not a runtime dependency of `sso-ident`.

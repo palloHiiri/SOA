@@ -26,6 +26,13 @@ public class InventoryController {
         return service.importTrainSet(payload);
     }
 
+    @GetMapping("/train-sets/by-code/{code}")
+    public TrainSetResponse findTrainSet(
+    @PathVariable String code,
+    @RequestParam int buildNumber) {
+        return service.findTrainSetByCodeAndBuildNumber(code, buildNumber);
+    }
+
     @PostMapping("/train-sets/{trainSetId}/lifecycle")
     public TrainSetLifecycleResponse changeLifecycle(
     @PathVariable int trainSetId,

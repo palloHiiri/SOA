@@ -19,6 +19,33 @@ tags:
   - name: Inventory projection
 
 paths:
+  /search:
+    post:
+      tags: [Tickets]
+      operationId: searchTickets
+      summary: Search tickets
+      description: |
+        Returns a paginated collection of tickets using the same field filters
+        as the regular ticket collection endpoint, supplied in a JSON request
+        body instead of query parameters.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketSearchRequest'
+      responses:
+        '200':
+          description: Matching tickets returned successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketPageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /tickets:
     get:
       tags: [Tickets]
@@ -698,7 +725,7 @@ components:
     TicketNameQuery:
       name: name
       in: query
-      description: Exact ticket-name filter.
+      description: Legacy exact ticket-name filter for the collection GET endpoint.
       schema:
         type: string
     TicketCreationDateQuery:
@@ -970,6 +997,57 @@ components:
         seatNumber:
           type: string
           maxLength: 3
+
+    TicketSearchRequest:
+      type: object
+      required:
+        - page
+        - size
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          default: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        sort:
+          type: array
+          items:
+            type: string
+            pattern: '^[A-Za-z][A-Za-z0-9]*(,(asc|desc|ASC|DESC))?$'
+        id:
+          type: integer
+          format: int64
+          minimum: 1
+        name:
+          type: string
+        creationDate:
+          type: string
+          format: date
+        venueId:
+          type: integer
+          format: int64
+          minimum: 1
+        trainSetId:
+          type: integer
+          format: int32
+          minimum: 1
+        carriageNumber:
+          type: string
+        seatNumber:
+          type: string
+        refundable:
+          type: boolean
+        type:
+          $ref: '#/components/schemas/TicketType'
+        basePrice:
+          type: number
+          format: double
+        discount:
+          type: integer
 
     TicketCreateRequest:
       type: object

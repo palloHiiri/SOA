@@ -55,6 +55,41 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /api/v1/inventory/train-sets/by-code/{code}:
+    get:
+      tags: [Train sets]
+      operationId: findTrainSetByCodeAndBuildNumber
+      summary: Find a train set by import code and build number
+      security:
+        - cookieSession: []
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: buildNumber
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Train set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainSetResponse'
+        '400':
+          description: Invalid parameters
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Train set not found
+
   /api/v1/inventory/train-sets/{trainSetId}/lifecycle:
     post:
       tags: [Train sets]

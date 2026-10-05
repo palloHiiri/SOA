@@ -26,6 +26,15 @@ public class InventoryRepository {
         );
     }
 
+    public TrainSetResponse findTrainSetByCodeAndBuildNumber(String code, int buildNumber) {
+        return jdbc.query(
+                "SELECT id, code, build_number, name, technical_name, description, train_set_lifecycle_status_id, created_at, updated_at " +
+                "FROM train_sets WHERE code = ? AND build_number = ?",
+                (rs, rowNum) -> mapTrainSet(rs),
+                code, buildNumber
+        ).stream().findFirst().orElse(null);
+    }
+
     public boolean lifecycleStatusExists(String status) {
         return Boolean.TRUE.equals(jdbc.queryForObject(
         "SELECT EXISTS (SELECT 1 FROM train_set_lifecycle_statuses WHERE code = ?)",

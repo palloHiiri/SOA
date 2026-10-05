@@ -4,6 +4,7 @@
   match:
     url: <.*/api/v1/inventory(?:/.*)?>
     methods:
+      - GET
       - POST
   authenticators:
     - handler: cookie_session

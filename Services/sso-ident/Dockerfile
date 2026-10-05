@@ -1,23 +1,18 @@
-FROM maven:3.9.11-eclipse-temurin-21 AS maven
-
-FROM ghcr.io/graalvm/native-image-community:21 AS build
+FROM maven:3.9.11-eclipse-temurin-21 AS build
 WORKDIR /workspace
-COPY --from=maven /usr/share/maven /usr/share/maven
-COPY --from=maven /usr/bin/mvn /usr/bin/mvn
-ENV MAVEN_HOME=/usr/share/maven
-ENV PATH="/usr/share/maven/bin:${PATH}"
 
 COPY pom.xml .
-RUN mvn -q -Pnative -DskipTests dependency:go-offline
-COPY src ./src
-RUN mvn -q -Pnative -DskipTests native:compile
+RUN mvn -q -DskipTests dependency:go-offline
 
-FROM debian:bookworm-slim
+COPY src ./src
+RUN mvn -q -DskipTests package
+
+FROM eclipse-temurin:21-jre-jammy
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates wget libstdc++6 \
+    && apt-get install -y --no-install-recommends ca-certificates wget \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY --from=build /workspace/target/sso-ident /app/sso-ident
+COPY --from=build /workspace/target/sso-ident.jar /app/sso-ident.jar
 
 EXPOSE 8080
-ENTRYPOINT ["/app/sso-ident"]
+ENTRYPOINT ["java", "-jar", "/app/sso-ident.jar"]

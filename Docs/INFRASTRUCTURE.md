@@ -66,9 +66,9 @@ The project runs the common infrastructure and backend services from one Docker 
 | `keto` | Authorization relation API | `4466`, `4467` | PostgreSQL `keto` |
 | `keto-init` | Initial relation bootstrap | — | none |
 | `liquibase` | Application DB migrations | — | PostgreSQL application DBs |
-| `sso-ident` | Reactive identity/session API, GraalVM Native Image | `8080` | PostgreSQL `sso_ident` + Redis |
-| `clients` | Client profile / passenger API + Kafka consumers, GraalVM Native Image | internal `8080` | PostgreSQL `clients` |
-| `inventory` | MVC train-set import/lifecycle API + CDC source, GraalVM Native Image | internal `8080` | PostgreSQL `inventory` |
+| `sso-ident` | Reactive identity/session API, JVM (Java 21) | `8080` | PostgreSQL `sso_ident` + Redis |
+| `clients` | Client profile / passenger API + Kafka consumers, JVM (Java 21) | internal `8080` | PostgreSQL `clients` |
+| `inventory` | MVC train-set import/lifecycle API + CDC source, JVM (Java 21) | internal `8080` | PostgreSQL `inventory` |
 | `booking` | Spring MVC booking/sales API packaged as a WAR and deployed to Tomcat 11 | `8075 -> 8080` | PostgreSQL `booking` |
 | `nginx` | Internal backend reverse proxy | internal `80` | none |
 | `frontend-nginx` | Static frontend server | internal `8080` | none |
@@ -216,7 +216,11 @@ The Compose stack includes a one-shot `sso-ident-system-admin-init` container. I
 1. Register the system user through Oathkeeper at `POST /api/v1/sso-ident/auth/register`.
 2. Add the returned user UUID to `Role:Admin#members` through Keto's write API.
 
-Bootstrap credentials are configured with `SYSTEM_ADMIN_EMAIL`, `SYSTEM_ADMIN_USERNAME` and `SYSTEM_ADMIN_PASSWORD`; the Compose file provides development defaults. The generated UUID is stored in the `sso_admin_state` volume to make subsequent `docker compose up` runs idempotent.
+Bootstrap credentials are configured with `SYSTEM_ADMIN_EMAIL`, `SYSTEM_ADMIN_USERNAME` and `SYSTEM_ADMIN_PASSWORD`; the Compose file provides development defaults. The generated UUID is stored in the `sso_admin_state` volume to make subsequent `docker compose up` runs idempotent. Registration uses bounded retries with a 3-second connection timeout and a 30-second total request timeout because Argon2 hashing and the registration integrations can take longer than the connection timeout. When a registration request may have committed a `PENDING` user but the response was lost, a repeated registration with the same credentials resumes that existing user; only an already-`ACTIVE` duplicate falls back to login for UUID recovery. Keto membership uses bounded retries and treats `409 Conflict` as an already-completed idempotent result.
+
+PostgreSQL readiness is stricter than a plain `pg_isready`: the Compose healthcheck waits until all six application databases (`sso_ident`, `keto`, `inventory`, `clients`, `tickets`, `booking`) actually exist. The central Liquibase runner additionally retries each database migration up to 10 times with a 3-second PostgreSQL JDBC connection timeout, so a transient database-creation/startup race does not permanently fail the migration container.
+
+Shell scripts under `Docker/` are stored with LF line endings via `.gitattributes`; Compose also strips CR characters from mounted scripts into `/tmp` immediately before execution, so a CRLF working tree cannot break startup.
 
 
 

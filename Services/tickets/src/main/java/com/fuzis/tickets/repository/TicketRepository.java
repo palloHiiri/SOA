@@ -201,6 +201,82 @@ public class TicketRepository {
         }
     }
 
+    public long countSearch(String expression) throws SQLException {
+        try (Connection c = dataSource.getConnection()) {
+            return countSearch(c, expression);
+        }
+    }
+
+    public long countSearch(Connection c, String expression) throws SQLException {
+        StringBuilder sql = new StringBuilder(
+        "SELECT COUNT(*) FROM tickets t JOIN venues v ON v.id=t.venue_id "
+        + LATEST_PRICE
+        + " WHERE " + searchPredicate());
+        List<Object> p = new ArrayList<>();
+        bindSearchPattern(p, expression);
+
+        try (PreparedStatement ps = c.prepareStatement(sql.toString())) {
+            Sql.bind(ps, p);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getLong(1);
+            }
+        }
+    }
+
+    public List<TicketResponse> findSearch(
+    int size,
+    long offset,
+    String expression,
+    List<SortPart> sorts
+    ) throws SQLException {
+        StringBuilder sql = new StringBuilder(BASE_SELECT + " WHERE " + searchPredicate());
+        List<Object> p = new ArrayList<>();
+        bindSearchPattern(p, expression);
+        sql.append(" ORDER BY ")
+        .append(sorts.stream()
+        .map(s -> s.expression() + " " + s.direction())
+        .reduce((a, b) -> a + ", " + b)
+        .orElse("t.id ASC"));
+        sql.append(" LIMIT ? OFFSET ?");
+        p.add(size);
+        p.add(offset);
+
+        try (
+            Connection c = dataSource.getConnection();
+            PreparedStatement ps = c.prepareStatement(sql.toString())
+        ) {
+            Sql.bind(ps, p);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<TicketResponse> out = new ArrayList<>();
+                while (rs.next()) out.add(map(rs));
+                return out;
+            }
+        }
+    }
+
+    private static String searchPredicate() {
+        return "CAST(t.id AS text) ILIKE ?"
+        + " OR COALESCE(t.name, '') ILIKE ?"
+        + " OR CAST(t.creation_date AS text) ILIKE ?"
+        + " OR CAST(t.venue_id AS text) ILIKE ?"
+        + " OR COALESCE(v.name, '') ILIKE ?"
+        + " OR CAST(v.train_set_id AS text) ILIKE ?"
+        + " OR COALESCE(t.carriage_number, '') ILIKE ?"
+        + " OR COALESCE(t.seat_number, '') ILIKE ?"
+        + " OR COALESCE(t.refundable::text, '') ILIKE ?"
+        + " OR COALESCE(t.type::text, '') ILIKE ?"
+        + " OR COALESCE(ph.base_price::text, '') ILIKE ?"
+        + " OR COALESCE(ph.discount::text, '') ILIKE ?";
+    }
+
+    private static void bindSearchPattern(List<Object> parameters, String expression) {
+        String pattern = "%" + (expression == null ? "" : expression) + "%";
+        for (int i = 0; i < 12; i++) {
+            parameters.add(pattern);
+        }
+    }
+
     public BigDecimal averageCurrentDiscount() throws SQLException {
         String sql =
                 "SELECT AVG(ph.discount) FROM tickets t " +
@@ -344,9 +420,9 @@ public class TicketRepository {
             sql.append(" AND t.id=?");
             p.add(id);
         }
-        if (name!=null) {
-            sql.append(" AND t.name=?");
-            p.add(name);
+        if (name!=null && !name.isBlank()) {
+            sql.append(" AND COALESCE(t.name, '') ILIKE ?");
+            p.add("%" + name + "%");
         }
         if (creationDate!=null) {
             sql.append(" AND t.creation_date=?");
@@ -360,13 +436,13 @@ public class TicketRepository {
             sql.append(" AND v.train_set_id=?");
             p.add(trainSetId);
         }
-        if (carriageNumber!=null) {
-            sql.append(" AND t.carriage_number=?");
-            p.add(carriageNumber);
+        if (carriageNumber!=null && !carriageNumber.isBlank()) {
+            sql.append(" AND COALESCE(t.carriage_number, '') ILIKE ?");
+            p.add("%" + carriageNumber + "%");
         }
-        if (seatNumber!=null) {
-            sql.append(" AND t.seat_number=?");
-            p.add(seatNumber);
+        if (seatNumber!=null && !seatNumber.isBlank()) {
+            sql.append(" AND COALESCE(t.seat_number, '') ILIKE ?");
+            p.add("%" + seatNumber + "%");
         }
         if (refundable!=null) {
             sql.append(" AND t.refundable=?");
@@ -377,12 +453,12 @@ public class TicketRepository {
             p.add(type.name());
         }
         if (basePrice!=null) {
-            sql.append(" AND ph.base_price=?");
-            p.add(basePrice);
+            sql.append(" AND COALESCE(ph.base_price::text, '') ILIKE ?");
+            p.add("%" + basePrice.toPlainString() + "%");
         }
         if (discount!=null) {
-            sql.append(" AND ph.discount=?");
-            p.add(discount);
+            sql.append(" AND COALESCE(ph.discount::text, '') ILIKE ?");
+            p.add("%" + discount + "%");
         }
     }
 
