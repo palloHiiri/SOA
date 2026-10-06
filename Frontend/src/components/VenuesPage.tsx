@@ -1,4 +1,6 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { ErrorNotice } from "./ErrorNotice";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import type { TrainSet, Venue } from "../types/ticket";
 
@@ -28,13 +30,13 @@ export function VenuesPage() {
 
   const [form, setForm] = useState<VenueFormState | null>(null);
 
+  const [deletingVenue, setDeletingVenue] = useState<Venue | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
   // Загрузка данных страницы.
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-
       const [venueResponse, trainResponse] = await Promise.all([
         fetchVenues(),
         fetchTrainSets(),
@@ -48,15 +50,34 @@ export function VenuesPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    void loadData();
+    let active = true;
+    void Promise.all([fetchVenues(), fetchTrainSets()])
+      .then(([venueResponse, trainResponse]) => {
+        if (!active) return;
+        setVenues(venueResponse.content);
+        setTrainSets(trainResponse.content);
+      })
+      .catch((err: unknown) => {
+        if (active)
+          setError(
+            err instanceof Error ? err.message : "Failed to load routes",
+          );
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   // Открытие формы создания маршрута.
 
   function openCreate() {
+    setError(null);
     setForm({
       id: null,
       name: "",
@@ -67,6 +88,7 @@ export function VenuesPage() {
   // Открытие формы редактирования маршрута.
 
   function openEdit(venue: Venue) {
+    setError(null);
     setForm({
       id: venue.id,
       name: venue.name,
@@ -123,12 +145,7 @@ export function VenuesPage() {
   // Удаление маршрута.
 
   async function handleDelete(venue: Venue) {
-    const confirmed = window.confirm(`Delete route "${venue.name}"?`);
-
-    if (!confirmed) {
-      return;
-    }
-
+    setDeleteBusy(true);
     try {
       setError(null);
 
@@ -137,6 +154,9 @@ export function VenuesPage() {
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete route");
+    } finally {
+      setDeleteBusy(false);
+      setDeletingVenue(null);
     }
   }
 
@@ -156,6 +176,15 @@ export function VenuesPage() {
 
   return (
     <section>
+      {deletingVenue && (
+        <ConfirmDialog
+          message={`Delete route "${deletingVenue.name}"?`}
+          busy={deleteBusy}
+          onCancel={() => setDeletingVenue(null)}
+          onConfirm={() => void handleDelete(deletingVenue)}
+        />
+      )}
+
       <div className="section-header">
         <div>
           <h2>Routes</h2>
@@ -173,7 +202,7 @@ export function VenuesPage() {
         </button>
       </div>
 
-      {error && <div className="booking-alert error">{error}</div>}
+      {error && !form && <ErrorNotice message={error} />}
 
       {loading && <p className="message">Loading routes...</p>}
 
@@ -183,7 +212,13 @@ export function VenuesPage() {
 
       {!loading && venues.length > 0 && (
         <div className="route-table-wrapper">
-          <table className="ticket-table">
+          <table className="ticket-table routes-list-table">
+            <colgroup>
+              <col style={{ width: 100 }} />
+              <col style={{ width: 280 }} />
+              <col style={{ width: 280 }} />
+              <col style={{ width: 220 }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>ID</th>
@@ -220,7 +255,7 @@ export function VenuesPage() {
                         type="button"
                         className="action-button delete"
 
-                        onClick={() => void handleDelete(venue)}
+                        onClick={() => setDeletingVenue(venue)}
                       >
                         Delete
                       </button>
@@ -327,6 +362,7 @@ export function VenuesPage() {
               </div>
             )}
 
+            {error && <ErrorNotice message={error} />}
             <div className="modal-actions">
               <button
                 type="button"

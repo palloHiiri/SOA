@@ -1,3 +1,4 @@
+import { ErrorNotice } from "./ErrorNotice";
 import { type FormEvent, useState } from "react";
 
 import { login } from "../api/authApi";
@@ -59,7 +60,6 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
           <span>Snezhnaya Railway</span>
 
           <h1>Welcome to Snezhnaya</h1>
-
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
@@ -87,7 +87,7 @@ export function LoginPage({ onLogin, onRegisterClick }: LoginPageProps) {
             />
           </label>
 
-          {error && <div className="booking-alert error">{error}</div>}
+          {error && <ErrorNotice message={error} />}
 
           <button type="submit" className="login-button" disabled={loading}>
             {loading ? "Signing in..." : "Sign in"}

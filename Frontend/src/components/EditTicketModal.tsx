@@ -1,3 +1,4 @@
+import { ErrorNotice } from "./ErrorNotice";
 import { type FormEvent, useEffect, useState } from "react";
 
 import type {
@@ -158,8 +159,27 @@ export function EditTicketModal({
   ]);
 
   // Обработка сохранения билета.
-  async function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    const invalidField = Array.from(event.currentTarget.elements).find(
+      (field) =>
+        (field instanceof HTMLInputElement ||
+          field instanceof HTMLSelectElement) &&
+        !field.validity.valid,
+    );
+    if (
+      invalidField instanceof HTMLInputElement ||
+      invalidField instanceof HTMLSelectElement
+    ) {
+      const label =
+        invalidField.closest("label")?.querySelector("span")?.textContent ??
+        "Field";
+      setError(
+        `${label}: ${invalidField.validity.badInput ? "Enter a valid number" : invalidField.validationMessage}`,
+      );
+      return;
+    }
 
     if (!carriageNumber || !seatNumber) {
       setError("Select carriage and seat");
@@ -197,6 +217,7 @@ export function EditTicketModal({
   return (
     <div className="modal-backdrop" onMouseDown={() => !loading && onClose()}>
       <form
+        noValidate
         className="booking-modal"
 
         onSubmit={handleSubmit}
@@ -341,7 +362,7 @@ export function EditTicketModal({
           </strong>
         </div>
 
-        {error && <div className="booking-alert error">{error}</div>}
+        {error && <ErrorNotice message={error} />}
 
         <div className="modal-actions">
           <button

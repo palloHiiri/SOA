@@ -177,92 +177,63 @@ export async function fetchTicketsBelowDiscount(
   return response.json();
 }
 
-export async function fetchTrainSets():
-Promise<TrainSetResponse> {
-
+export async function fetchTrainSets(): Promise<TrainSetResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/train-sets?page=1&size=100&sort=id,asc`
+    `${API_BASE_URL}/train-sets?page=1&size=100&sort=id,asc`,
   );
 
   if (!response.ok) {
-    throw new Error(
-      await readTicketError(response)
-    );
+    throw new Error(await readTicketError(response));
   }
 
   return response.json();
 }
 
+export async function createVenue(request: VenueCreateRequest): Promise<Venue> {
+  const response = await fetch(`${API_BASE_URL}/venues`, {
+    method: "POST",
 
-export async function createVenue(
-  request: VenueCreateRequest
-): Promise<Venue> {
+    headers: {
+      "Content-Type": "application/json",
+    },
 
-  const response = await fetch(
-    `${API_BASE_URL}/venues`,
-    {
-      method: "POST",
-
-      headers: {
-        "Content-Type": "application/json"
-      },
-
-      body: JSON.stringify(request)
-    }
-  );
+    body: JSON.stringify(request),
+  });
 
   if (!response.ok) {
-    throw new Error(
-      await readTicketError(response)
-    );
+    throw new Error(await readTicketError(response));
   }
 
   return response.json();
 }
-
 
 export async function updateVenue(
   venueId: number,
-  request: VenueUpdateRequest
+  request: VenueUpdateRequest,
 ): Promise<Venue> {
+  const response = await fetch(`${API_BASE_URL}/venues/${venueId}`, {
+    method: "PUT",
 
-  const response = await fetch(
-    `${API_BASE_URL}/venues/${venueId}`,
-    {
-      method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
 
-      headers: {
-        "Content-Type": "application/json"
-      },
-
-      body: JSON.stringify(request)
-    }
-  );
+    body: JSON.stringify(request),
+  });
 
   if (!response.ok) {
-    throw new Error(
-      await readTicketError(response)
-    );
+    throw new Error(await readTicketError(response));
   }
 
   return response.json();
 }
 
-
-export async function deleteVenue(
-  venueId: number
-): Promise<void> {
-
-  const response = await fetch(
-    `${API_BASE_URL}/venues/${venueId}`,
-    {
-      method: "DELETE"
-    }
-  );
+export async function deleteVenue(venueId: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/venues/${venueId}`, {
+    method: "DELETE",
+  });
 
   if (!response.ok) {
-    throw new Error(
-      await readTicketError(response)
-    );
+    throw new Error(await readTicketError(response));
   }
 }

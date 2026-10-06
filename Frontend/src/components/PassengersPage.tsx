@@ -1,3 +1,4 @@
+import { ErrorNotice } from "./ErrorNotice";
 import { type FormEvent, useState } from "react";
 
 import type { Passenger, PassengerCreateRequest } from "../types/passenger";
@@ -41,6 +42,10 @@ export function PassengersPage({
   error,
   onPassengerCreated,
 }: PassengersPageProps) {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const latestBirthDate = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, "0")}-${String(yesterday.getDate()).padStart(2, "0")}`;
+
   const [formOpened, setFormOpened] = useState(false);
 
   const [firstName, setFirstName] = useState("");
@@ -111,6 +116,11 @@ export function PassengersPage({
     ) {
       setFormError("Fill in all required fields");
 
+      return;
+    }
+
+    if (birthDate > latestBirthDate) {
+      setFormError("Birth date must be in the past");
       return;
     }
 
@@ -219,7 +229,7 @@ export function PassengersPage({
 
       {loading && <p className="message">Loading passengers...</p>}
 
-      {error && <p className="message error">{error}</p>}
+      {error && <ErrorNotice message={error} />}
 
       {!loading && !error && passengers.length === 0 && (
         <p className="message">No passengers yet.</p>
@@ -302,9 +312,7 @@ export function PassengersPage({
                       </div>
                     )}
 
-                    {ticketsError && (
-                      <div className="booking-alert error">{ticketsError}</div>
-                    )}
+                    {ticketsError && <ErrorNotice message={ticketsError} />}
 
                     {!ticketsLoading &&
                       !ticketsError &&
@@ -384,6 +392,7 @@ export function PassengersPage({
                 <span>First name *</span>
 
                 <input
+                  maxLength={255}
                   value={firstName}
 
                   onChange={(event) => setFirstName(event.target.value)}
@@ -394,6 +403,7 @@ export function PassengersPage({
                 <span>Last name *</span>
 
                 <input
+                  maxLength={255}
                   value={lastName}
 
                   onChange={(event) => setLastName(event.target.value)}
@@ -405,6 +415,7 @@ export function PassengersPage({
               <span>Middle name</span>
 
               <input
+                maxLength={255}
                 value={middleName}
 
                 onChange={(event) => setMiddleName(event.target.value)}
@@ -434,6 +445,7 @@ export function PassengersPage({
                 <span>Document series *</span>
 
                 <input
+                  maxLength={64}
                   value={documentSeriesNumber}
 
                   onChange={(event) =>
@@ -446,6 +458,7 @@ export function PassengersPage({
                 <span>Document number *</span>
 
                 <input
+                  maxLength={128}
                   value={documentNumber}
 
                   onChange={(event) => setDocumentNumber(event.target.value)}
@@ -458,6 +471,7 @@ export function PassengersPage({
 
               <input
                 type="date"
+                max={latestBirthDate}
 
                 value={birthDate}
 
@@ -471,6 +485,7 @@ export function PassengersPage({
               <input
                 type="email"
 
+                maxLength={320}
                 value={email}
 
                 onChange={(event) => setEmail(event.target.value)}
@@ -483,6 +498,7 @@ export function PassengersPage({
               <input
                 type="tel"
 
+                maxLength={64}
                 value={phoneNumber}
 
                 placeholder="+79991234567"
@@ -491,9 +507,7 @@ export function PassengersPage({
               />
             </label>
 
-            {formError && (
-              <div className="booking-alert error">{formError}</div>
-            )}
+            {formError && <ErrorNotice message={formError} />}
 
             <div className="modal-actions">
               <button

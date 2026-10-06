@@ -5,6 +5,7 @@
     serif;
   color: #2a2e33;
   background: #f4f8fa;
+  overflow-wrap: anywhere;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

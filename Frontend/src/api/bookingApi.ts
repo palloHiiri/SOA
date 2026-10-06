@@ -74,8 +74,7 @@ export async function fetchPassengerTickets(
     } catch {}
 
     throw new Error(
-      error?.message ??
-        `Failed to load passenger tickets: ${response.status}`,
+      error?.message ?? `Failed to load passenger tickets: ${response.status}`,
     );
   }
 

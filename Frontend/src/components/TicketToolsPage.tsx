@@ -1,3 +1,4 @@
+import { ErrorNotice } from "./ErrorNotice";
 import { useState } from "react";
 
 import type { Ticket } from "../types/ticket";
@@ -61,7 +62,7 @@ export function TicketToolsPage() {
         </div>
       </div>
 
-      {error && <div className="booking-alert error">{error}</div>}
+      {error && <ErrorNotice message={error} />}
 
       <div className="tools-grid">
         <article className="tool-card">

@@ -1,6 +1,6 @@
 import "./App.css";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Ticket, TicketRequest, TicketResponse } from "./types/ticket";
 
@@ -32,6 +32,9 @@ import { TicketToolsPage } from "./components/TicketToolsPage";
 
 import { VenuesPage } from "./components/VenuesPage";
 
+import { ConfirmDialog } from "./components/ConfirmDialog";
+import { ErrorNotice } from "./components/ErrorNotice";
+
 type AuthMode = "login" | "register";
 
 type Page = "tickets" | "routes" | "passengers" | "tools";
@@ -60,7 +63,8 @@ function App() {
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
 
-  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [loadedTicketRequest, setLoadedTicketRequest] =
+    useState<TicketRequest | null>(null);
 
   const [ticketsError, setTicketsError] = useState<string | null>(null);
 
@@ -70,12 +74,17 @@ function App() {
     sort: "id,asc",
   });
 
+  const ticketsLoading = loadedTicketRequest !== ticketRequest;
+
   const [ticketMeta, setTicketMeta] = useState<Omit<
     TicketResponse,
     "content"
   > | null>(null);
 
-  const [filtersOpened, setFiltersOpened] = useState(false);
+  const [deletingTicket, setDeletingTicket] = useState<Ticket | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const ticketLoadId = useRef(0);
+  const [filterResetVersion, setFilterResetVersion] = useState(0);
 
   const [addTicketOpened, setAddTicketOpened] = useState(false);
 
@@ -85,7 +94,7 @@ function App() {
 
   const [passengers, setPassengers] = useState<Passenger[]>([]);
 
-  const [passengersLoading, setPassengersLoading] = useState(false);
+  const [passengersLoading, setPassengersLoading] = useState(true);
 
   const [passengersError, setPassengersError] = useState<string | null>(null);
 
@@ -123,6 +132,55 @@ function App() {
     void checkAuthentication();
   }, []);
 
+  // Работа с API билетов.
+
+  const loadTickets = useCallback(() => {
+    const loadId = ++ticketLoadId.current;
+    return fetchTickets(ticketRequest)
+      .then((response) => {
+        if (loadId !== ticketLoadId.current) return;
+        setTicketsError(null);
+        setTickets(response.content);
+        const { page, size, totalElements, totalPages, hasNext, hasPrevious } =
+          response;
+        setTicketMeta({
+          page,
+          size,
+          totalElements,
+          totalPages,
+          hasNext,
+          hasPrevious,
+        });
+      })
+      .catch((err: unknown) => {
+        if (loadId !== ticketLoadId.current) return;
+        setTicketsError(
+          err instanceof Error ? err.message : "Failed to load tickets",
+        );
+      })
+      .finally(() => {
+        if (loadId === ticketLoadId.current)
+          setLoadedTicketRequest(ticketRequest);
+      });
+  }, [ticketRequest]);
+
+  // Работа с API пассажиров.
+  function loadPassengers() {
+    return fetchPassengers()
+      .then((data) => {
+        setPassengersError(null);
+        setPassengers(data);
+      })
+      .catch((err: unknown) => {
+        setPassengersError(
+          err instanceof Error ? err.message : "Failed to load passengers",
+        );
+      })
+      .finally(() => {
+        setPassengersLoading(false);
+      });
+  }
+
   // Загрузка пассажиров после авторизации.
 
   useEffect(() => {
@@ -141,59 +199,10 @@ function App() {
     }
 
     void loadTickets();
-  }, [currentUser, ticketRequest]);
-
-  // Работа с API билетов.
-
-  async function loadTickets() {
-    try {
-      setTicketsLoading(true);
-      setTicketsError(null);
-
-      const response = await fetchTickets(ticketRequest);
-
-      setTickets(response.content);
-
-      setTicketMeta({
-        page: response.page,
-
-        size: response.size,
-
-        totalElements: response.totalElements,
-
-        totalPages: response.totalPages,
-
-        hasNext: response.hasNext,
-
-        hasPrevious: response.hasPrevious,
-      });
-    } catch (err) {
-      setTicketsError(
-        err instanceof Error ? err.message : "Failed to load tickets",
-      );
-    } finally {
-      setTicketsLoading(false);
-    }
-  }
-
-  // Работа с API пассажиров.
-
-  async function loadPassengers() {
-    try {
-      setPassengersLoading(true);
-      setPassengersError(null);
-
-      const data = await fetchPassengers();
-
-      setPassengers(data);
-    } catch (err) {
-      setPassengersError(
-        err instanceof Error ? err.message : "Failed to load passengers",
-      );
-    } finally {
-      setPassengersLoading(false);
-    }
-  }
+    return () => {
+      ticketLoadId.current += 1;
+    };
+  }, [currentUser, loadTickets]);
 
   // Открытие окна продажи.
 
@@ -274,14 +283,7 @@ function App() {
   // Удаление билета.
 
   async function handleDeleteTicket(ticket: Ticket) {
-    const confirmed = window.confirm(
-      `Delete ticket #${ticket.id} "${ticket.name}"?`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
+    setDeleteBusy(true);
     try {
       setTicketsError(null);
 
@@ -302,6 +304,9 @@ function App() {
       setTicketsError(
         err instanceof Error ? err.message : "Failed to delete ticket",
       );
+    } finally {
+      setDeleteBusy(false);
+      setDeletingTicket(null);
     }
   }
 
@@ -315,6 +320,8 @@ function App() {
     } finally {
       setCurrentUser(null);
 
+      setLoadedTicketRequest(null);
+      setPassengersLoading(true);
       setTickets([]);
       setPassengers([]);
 
@@ -326,7 +333,7 @@ function App() {
         sort: "id,asc",
       });
 
-      setFiltersOpened(false);
+      setDeletingTicket(null);
 
       setActivePage("tickets");
       setAuthMode("login");
@@ -377,6 +384,14 @@ function App() {
 
   return (
     <main className="container">
+      {deletingTicket && (
+        <ConfirmDialog
+          message={`Delete ticket #${deletingTicket.id} "${deletingTicket.name}"?`}
+          busy={deleteBusy}
+          onCancel={() => setDeletingTicket(null)}
+          onConfirm={() => void handleDeleteTicket(deletingTicket)}
+        />
+      )}
       {/* Шапка приложения. */}
 
       <header className="header">
@@ -471,15 +486,6 @@ function App() {
             <div className="section-actions">
               <button
                 type="button"
-                className="filter-toggle-button"
-
-                onClick={() => setFiltersOpened((current) => !current)}
-              >
-                {filtersOpened ? "Hide filters" : "Filters"}
-              </button>
-
-              <button
-                type="button"
                 className="add-ticket-button"
 
                 onClick={() => setAddTicketOpened(true)}
@@ -489,70 +495,65 @@ function App() {
             </div>
           </div>
 
-          {/* Фильтры билетов. */}
-
-          {filtersOpened && (
-            <TicketFilters
-              onApply={(request) => {
-                setTicketRequest({
-                  ...request,
-
+          {ticketsError && <ErrorNotice message={ticketsError} />}
+          <div className="table-toolbar">
+            <button
+              type="button"
+              className="filter-reset"
+              onClick={() => {
+                setFilterResetVersion((current) => current + 1);
+                setTicketRequest((current) => ({
                   page: 1,
-                });
+                  size: current.size ?? 10,
+                  sort: "id,asc",
+                }));
               }}
-            />
-          )}
+            >
+              Reset filters
+            </button>
+          </div>
+          <>
+            <div className="ticket-wrapper">
+              <table className="ticket-table tickets-list-table">
+                <colgroup>
+                  {[
+                    100, 220, 145, 220, 120, 120, 110, 120, 120, 120, 130, 240,
+                  ].map((width, index) => (
+                    <col key={index} style={{ width }} />
+                  ))}
+                </colgroup>
+                <thead>
+                  <TicketFilters
+                    key={filterResetVersion}
+                    request={ticketRequest}
+                    onApply={setTicketRequest}
+                  />
+                </thead>
 
-          {ticketsLoading && <p className="message">Loading tickets...</p>}
-
-          {ticketsError && <p className="message error">{ticketsError}</p>}
-
-          {!ticketsLoading && !ticketsError && tickets.length === 0 && (
-            <p className="message">No tickets found.</p>
-          )}
-
-          {!ticketsLoading && !ticketsError && tickets.length > 0 && (
-            <>
-              <div className="ticket-wrapper">
-                <table className="ticket-table">
-                  <thead>
+                <tbody>
+                  {ticketsLoading ? (
                     <tr>
-                      <th>ID</th>
-
-                      <th>Name</th>
-
-                      <th>Venue</th>
-
-                      <th>Train set</th>
-
-                      <th>Carriage</th>
-
-                      <th>Seat</th>
-
-                      <th>Price</th>
-
-                      <th>Discount</th>
-
-                      <th>Type</th>
-
-                      <th>Refundable</th>
-
-                      <th>Actions</th>
+                      <td colSpan={12} className="table-state">
+                        Loading tickets…
+                      </td>
                     </tr>
-                  </thead>
+                  ) : tickets.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} className="table-state">
+                        No tickets found.
+                      </td>
+                    </tr>
+                  ) : null}
 
-                  <tbody>
-                    {tickets.map((ticket) => (
+                  {!ticketsLoading &&
+                    tickets.map((ticket) => (
                       <tr key={ticket.id}>
                         <td>{ticket.id}</td>
 
                         <td>
                           <div className="ticket-name">{ticket.name}</div>
-
-                          <div className="secondary-text">
-                            {ticket.creationDate}
-                          </div>
                         </td>
+                        <td>{ticket.creationDate}</td>
 
                         <td>
                           <div className="venue-details">
@@ -617,7 +618,7 @@ function App() {
                               type="button"
                               className="action-button delete"
 
-                              onClick={() => void handleDeleteTicket(ticket)}
+                              onClick={() => setDeletingTicket(ticket)}
                             >
                               Delete
                             </button>
@@ -625,63 +626,82 @@ function App() {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                </tbody>
+              </table>
+            </div>
 
-              {/* Пагинация билетов. */}
+            {/* Пагинация билетов. */}
 
-              {ticketMeta && ticketMeta.totalPages > 0 && (
-                <div className="pagination">
-                  <button
-                    type="button"
+            {ticketMeta && (
+              <div className="pagination">
+                <button
+                  type="button"
 
-                    disabled={!ticketMeta.hasPrevious}
+                  disabled={!ticketMeta.hasPrevious}
 
-                    onClick={() =>
-                      setTicketRequest((current) => ({
-                        ...current,
+                  onClick={() =>
+                    setTicketRequest((current) => ({
+                      ...current,
 
-                        page: Math.max(
-                          1,
+                      page: Math.max(
+                        1,
 
-                          (current.page ?? 1) - 1,
-                        ),
-                      }))
-                    }
-                  >
-                    ← Previous
-                  </button>
+                        (current.page ?? 1) - 1,
+                      ),
+                    }))
+                  }
+                >
+                  ← Previous
+                </button>
 
-                  <div className="pagination-info">
-                    <strong>
-                      Page {ticketMeta.page}
-                      {" / "}
-                      {ticketMeta.totalPages}
-                    </strong>
+                <div className="pagination-info">
+                  <strong>
+                    Page {ticketMeta.totalPages > 0 ? ticketMeta.page : 0}
+                    {" / "}
+                    {ticketMeta.totalPages}
+                  </strong>
 
-                    <span>{ticketMeta.totalElements} tickets</span>
-                  </div>
-
-                  <button
-                    type="button"
-
-                    disabled={!ticketMeta.hasNext}
-
-                    onClick={() =>
-                      setTicketRequest((current) => ({
-                        ...current,
-
-                        page: (current.page ?? 1) + 1,
-                      }))
-                    }
-                  >
-                    Next →
-                  </button>
+                  <span>{ticketMeta.totalElements} tickets</span>
                 </div>
-              )}
-            </>
-          )}
+
+                <button
+                  type="button"
+
+                  disabled={!ticketMeta.hasNext}
+
+                  onClick={() =>
+                    setTicketRequest((current) => ({
+                      ...current,
+
+                      page: (current.page ?? 1) + 1,
+                    }))
+                  }
+                >
+                  Next →
+                </button>
+                <label className="page-size">
+                  Per page
+                  <select
+                    aria-label="Tickets per page"
+                    value={ticketRequest.size ?? 10}
+                    onChange={(event) =>
+                      setTicketRequest((current) => ({
+                        ...current,
+                        page: 1,
+                        size: Number(event.target.value),
+                      }))
+                    }
+                  >
+                    {[5, 10, 20, 50].map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+          </>
         </section>
       )}
 
@@ -821,9 +841,7 @@ function App() {
               </label>
             )}
 
-            {bookingError && (
-              <div className="booking-alert error">{bookingError}</div>
-            )}
+            {bookingError && <ErrorNotice message={bookingError} />}
 
             {bookingResult && (
               <div className="booking-alert success">{bookingResult}</div>

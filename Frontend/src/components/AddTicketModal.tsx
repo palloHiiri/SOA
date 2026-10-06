@@ -1,3 +1,4 @@
+import { ErrorNotice } from "./ErrorNotice";
 import { type FormEvent, useEffect, useState } from "react";
 
 import type {
@@ -41,7 +42,7 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
 
   const [venueMode, setVenueMode] = useState<VenueMode>("existing");
 
-  const [venueId, setVenueId] = useState<number | null>(null);
+  const [selectedVenueId, setVenueId] = useState<number | null>(null);
 
   const [newVenueName, setNewVenueName] = useState("");
 
@@ -94,25 +95,12 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
     void loadInitialData();
   }, []);
 
-  // Обновление маршрутов при смене поезда.
-
-  useEffect(() => {
-    if (trainSetId === null || venueMode !== "existing") {
-      return;
-    }
-
-    const matchingVenues = venues.filter(
-      (venue) => venue.trainSetId === trainSetId,
-    );
-
-    const currentStillValid = matchingVenues.some(
-      (venue) => venue.id === venueId,
-    );
-
-    if (!currentStillValid) {
-      setVenueId(matchingVenues[0]?.id ?? null);
-    }
-  }, [trainSetId, venueMode, venues, venueId]);
+  const matchingVenues = venues.filter(
+    (venue) => venue.trainSetId === trainSetId,
+  );
+  const venueId = matchingVenues.some((venue) => venue.id === selectedVenueId)
+    ? selectedVenueId
+    : (matchingVenues[0]?.id ?? null);
 
   // Загрузка вагонов выбранного поезда.
 
@@ -188,8 +176,27 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
 
   // Создание маршрута и билета.
 
-  async function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    const invalidField = Array.from(event.currentTarget.elements).find(
+      (field) =>
+        (field instanceof HTMLInputElement ||
+          field instanceof HTMLSelectElement) &&
+        !field.validity.valid,
+    );
+    if (
+      invalidField instanceof HTMLInputElement ||
+      invalidField instanceof HTMLSelectElement
+    ) {
+      const label =
+        invalidField.closest("label")?.querySelector("span")?.textContent ??
+        "Field";
+      setError(
+        `${label}: ${invalidField.validity.badInput ? "Enter a valid number" : invalidField.validationMessage}`,
+      );
+      return;
+    }
 
     if (trainSetId === null) {
       setError("Select a train");
@@ -221,7 +228,7 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
       return;
     }
 
-    if (discount < 1 || discount > 100) {
+    if (!Number.isInteger(discount) || discount < 1 || discount > 100) {
       setError("Discount must be between 1 and 100");
 
       return;
@@ -275,7 +282,7 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
 
   return (
     <div
-      className="modal-backdrop"
+      className="modal-backdrop add-ticket-backdrop"
 
       onMouseDown={() => {
         if (!loading) {
@@ -284,7 +291,11 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
       }}
     >
       <form
-        className="booking-modal passenger-modal"
+        noValidate
+        className="booking-modal add-ticket-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-ticket-title"
 
         onSubmit={handleSubmit}
 
@@ -294,255 +305,266 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
           <div>
             <span className="modal-eyebrow">Tickets</span>
 
-            <h2>Add ticket</h2>
+            <h2 id="add-ticket-title">Add ticket</h2>
           </div>
 
-          <button type="button" className="close-button" onClick={onClose}>
+          <button
+            type="button"
+            className="close-button"
+            aria-label="Close add ticket"
+            disabled={loading}
+            onClick={onClose}
+          >
             ×
           </button>
         </div>
 
-        <label className="form-field">
-          <span>Train *</span>
-
-          <select
-            value={trainSetId ?? ""}
-
-            onChange={(event) => setTrainSetId(Number(event.target.value))}
-          >
-            {trainSets.map((train) => (
-              <option key={train.id} value={train.id}>
-                {train.name}
-
-                {" — "}
-
-                {train.code}
-
-                {" — #"}
-
-                {train.id}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div className="venue-mode-switch">
-          <button
-            type="button"
-
-            className={
-              venueMode === "existing"
-                ? "venue-mode-button active"
-                : "venue-mode-button"
-            }
-
-            onClick={() => setVenueMode("existing")}
-          >
-            Existing route
-          </button>
-
-          <button
-            type="button"
-
-            className={
-              venueMode === "new"
-                ? "venue-mode-button active"
-                : "venue-mode-button"
-            }
-
-            onClick={() => setVenueMode("new")}
-          >
-            New route
-          </button>
-        </div>
-
-        {venueMode === "existing" && (
+        <div className="add-ticket-body">
           <label className="form-field">
-            <span>Route *</span>
+            <span>Train *</span>
 
-            {availableVenues.length > 0 ? (
+            <select
+              value={trainSetId ?? ""}
+
+              onChange={(event) => setTrainSetId(Number(event.target.value))}
+            >
+              {trainSets.map((train) => (
+                <option key={train.id} value={train.id}>
+                  {train.name}
+
+                  {" — "}
+
+                  {train.code}
+
+                  {" — #"}
+
+                  {train.id}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="venue-mode-switch">
+            <button
+              type="button"
+
+              className={
+                venueMode === "existing"
+                  ? "venue-mode-button active"
+                  : "venue-mode-button"
+              }
+
+              onClick={() => setVenueMode("existing")}
+            >
+              Existing route
+            </button>
+
+            <button
+              type="button"
+
+              className={
+                venueMode === "new"
+                  ? "venue-mode-button active"
+                  : "venue-mode-button"
+              }
+
+              onClick={() => setVenueMode("new")}
+            >
+              New route
+            </button>
+          </div>
+
+          {venueMode === "existing" && (
+            <label className="form-field">
+              <span>Route *</span>
+
+              {availableVenues.length > 0 ? (
+                <select
+                  value={venueId ?? ""}
+
+                  onChange={(event) => setVenueId(Number(event.target.value))}
+                >
+                  {availableVenues.map((venue) => (
+                    <option key={venue.id} value={venue.id}>
+                      {venue.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="no-passengers-warning">
+                  <span>This train has no routes yet.</span>
+
+                  <button
+                    type="button"
+
+                    onClick={() => setVenueMode("new")}
+                  >
+                    Create route
+                  </button>
+                </div>
+              )}
+            </label>
+          )}
+
+          {venueMode === "new" && (
+            <label className="form-field">
+              <span>New route name *</span>
+
+              <input
+                value={newVenueName}
+
+                placeholder="Berlin → Hamburg"
+
+                onChange={(event) => setNewVenueName(event.target.value)}
+              />
+
+              <small>The route will be linked to the selected train.</small>
+            </label>
+          )}
+
+          <div className="form-row">
+            <label className="form-field">
+              <span>Carriage *</span>
+
               <select
-                value={venueId ?? ""}
+                value={carriageNumber}
 
-                onChange={(event) => setVenueId(Number(event.target.value))}
+                onChange={(event) => setCarriageNumber(event.target.value)}
               >
-                {availableVenues.map((venue) => (
-                  <option key={venue.id} value={venue.id}>
-                    {venue.name}
+                {carriages.map((carriage) => (
+                  <option
+                    key={carriage.id ?? carriage.carriageNumber}
+
+                    value={carriage.carriageNumber ?? ""}
+                  >
+                    {carriage.carriageNumber}
                   </option>
                 ))}
               </select>
-            ) : (
-              <div className="no-passengers-warning">
-                <span>This train has no routes yet.</span>
+            </label>
 
-                <button
-                  type="button"
+            <label className="form-field">
+              <span>Seat *</span>
 
-                  onClick={() => setVenueMode("new")}
-                >
-                  Create route
-                </button>
-              </div>
-            )}
-          </label>
-        )}
+              <select
+                value={seatNumber}
 
-        {venueMode === "new" && (
+                onChange={(event) => setSeatNumber(event.target.value)}
+              >
+                {seats.map((seat) => (
+                  <option
+                    key={seat.id ?? seat.seatNumber}
+
+                    value={seat.seatNumber ?? ""}
+                  >
+                    {seat.seatNumber}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           <label className="form-field">
-            <span>New route name *</span>
+            <span>Ticket name</span>
 
             <input
-              value={newVenueName}
+              value={name}
 
-              placeholder="Berlin → Hamburg"
+              placeholder="Leave empty for automatic name"
 
-              onChange={(event) => setNewVenueName(event.target.value)}
-            />
-
-            <small>The route will be linked to the selected train.</small>
-          </label>
-        )}
-
-        <div className="form-row">
-          <label className="form-field">
-            <span>Carriage *</span>
-
-            <select
-              value={carriageNumber}
-
-              onChange={(event) => setCarriageNumber(event.target.value)}
-            >
-              {carriages.map((carriage) => (
-                <option
-                  key={carriage.id ?? carriage.carriageNumber}
-
-                  value={carriage.carriageNumber ?? ""}
-                >
-                  {carriage.carriageNumber}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="form-field">
-            <span>Seat *</span>
-
-            <select
-              value={seatNumber}
-
-              onChange={(event) => setSeatNumber(event.target.value)}
-            >
-              {seats.map((seat) => (
-                <option
-                  key={seat.id ?? seat.seatNumber}
-
-                  value={seat.seatNumber ?? ""}
-                >
-                  {seat.seatNumber}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <label className="form-field">
-          <span>Ticket name</span>
-
-          <input
-            value={name}
-
-            placeholder="Leave empty for automatic name"
-
-            onChange={(event) => setName(event.target.value)}
-          />
-        </label>
-
-        <div className="form-row">
-          <label className="form-field">
-            <span>Base price</span>
-
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-
-              value={basePrice}
-
-              onChange={(event) => setBasePrice(event.target.value)}
+              onChange={(event) => setName(event.target.value)}
             />
           </label>
 
-          <label className="form-field">
-            <span>Discount *</span>
+          <div className="form-row">
+            <label className="form-field">
+              <span>Base price</span>
 
-            <input
-              type="number"
-              min="1"
-              max="100"
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
 
-              value={discount}
+                value={basePrice}
 
-              onChange={(event) => setDiscount(Number(event.target.value))}
-            />
-          </label>
+                onChange={(event) => setBasePrice(event.target.value)}
+              />
+            </label>
+
+            <label className="form-field">
+              <span>Discount *</span>
+
+              <input
+                type="number"
+                min="1"
+                max="100"
+
+                value={discount}
+
+                onChange={(event) => setDiscount(Number(event.target.value))}
+              />
+            </label>
+          </div>
+
+          <div className="form-row">
+            <label className="form-field">
+              <span>Type</span>
+
+              <select
+                value={type}
+
+                onChange={(event) => {
+                  const value = event.target.value;
+
+                  if (
+                    value === "" ||
+                    value === "VIP" ||
+                    value === "USUAL" ||
+                    value === "CHEAP"
+                  ) {
+                    setType(value);
+                  }
+                }}
+              >
+                <option value="">None</option>
+
+                <option value="VIP">VIP</option>
+
+                <option value="USUAL">USUAL</option>
+
+                <option value="CHEAP">CHEAP</option>
+              </select>
+            </label>
+
+            <label className="form-field">
+              <span>Refundable</span>
+
+              <select
+                value={refundable}
+
+                onChange={(event) => {
+                  const value = event.target.value;
+
+                  if (
+                    value === "true" ||
+                    value === "false" ||
+                    value === "null"
+                  ) {
+                    setRefundable(value);
+                  }
+                }}
+              >
+                <option value="true">Yes</option>
+
+                <option value="false">No</option>
+
+                <option value="null">Not specified</option>
+              </select>
+            </label>
+          </div>
+
+          {error && <ErrorNotice message={error} />}
         </div>
-
-        <div className="form-row">
-          <label className="form-field">
-            <span>Type</span>
-
-            <select
-              value={type}
-
-              onChange={(event) => {
-                const value = event.target.value;
-
-                if (
-                  value === "" ||
-                  value === "VIP" ||
-                  value === "USUAL" ||
-                  value === "CHEAP"
-                ) {
-                  setType(value);
-                }
-              }}
-            >
-              <option value="">None</option>
-
-              <option value="VIP">VIP</option>
-
-              <option value="USUAL">USUAL</option>
-
-              <option value="CHEAP">CHEAP</option>
-            </select>
-          </label>
-
-          <label className="form-field">
-            <span>Refundable</span>
-
-            <select
-              value={refundable}
-
-              onChange={(event) => {
-                const value = event.target.value;
-
-                if (value === "true" || value === "false" || value === "null") {
-                  setRefundable(value);
-                }
-              }}
-            >
-              <option value="true">Yes</option>
-
-              <option value="false">No</option>
-
-              <option value="null">Not specified</option>
-            </select>
-          </label>
-        </div>
-
-        {error && <div className="booking-alert error">{error}</div>}
-
         <div className="modal-actions">
           <button
             type="button"

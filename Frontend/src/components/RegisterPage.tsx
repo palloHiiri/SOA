@@ -1,3 +1,4 @@
+import { ErrorNotice } from "./ErrorNotice";
 import { type FormEvent, useState } from "react";
 
 import { register } from "../api/authApi";
@@ -80,7 +81,6 @@ export function RegisterPage({
           <span>Snezhnaya Railway</span>
 
           <h1>Becoming a fatui agent</h1>
-
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
@@ -152,7 +152,7 @@ export function RegisterPage({
             />
           </label>
 
-          {error && <div className="booking-alert error">{error}</div>}
+          {error && <ErrorNotice message={error} />}
 
           <button type="submit" className="login-button" disabled={loading}>
             {loading ? "Creating account..." : "Create account"}
