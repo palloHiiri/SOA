@@ -1,3 +1,4 @@
+import { isPriceInput, parsePrice } from "../utils/price";
 import { ErrorNotice } from "./ErrorNotice";
 import { type FormEvent, useEffect, useState } from "react";
 
@@ -198,6 +199,16 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
       return;
     }
 
+    if (
+      basePrice &&
+      (!Number.isFinite(parsePrice(basePrice)) || parsePrice(basePrice) <= 0)
+    ) {
+      setError(
+        "Price must be positive, with at most 10 digits before and 2 after the decimal separator",
+      );
+      return;
+    }
+
     if (trainSetId === null) {
       setError("Select a train");
 
@@ -262,7 +273,7 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
         carriageNumber,
         seatNumber,
 
-        basePrice: basePrice ? Number(basePrice) : null,
+        basePrice: basePrice ? parsePrice(basePrice) : null,
 
         discount,
 
@@ -481,13 +492,16 @@ export function AddTicketModal({ onClose, onCreated }: AddTicketModalProps) {
               <span>Base price</span>
 
               <input
-                type="number"
-                min="0.01"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
+                maxLength={13}
 
                 value={basePrice}
 
-                onChange={(event) => setBasePrice(event.target.value)}
+                onChange={(event) => {
+                  if (isPriceInput(event.target.value))
+                    setBasePrice(event.target.value);
+                }}
               />
             </label>
 

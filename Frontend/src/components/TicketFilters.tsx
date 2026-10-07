@@ -1,3 +1,4 @@
+import { isPriceInput, parsePrice } from "../utils/price";
 import { useState } from "react";
 import type { TicketRequest } from "../types/ticket";
 
@@ -24,6 +25,12 @@ export function TicketFilters({ request, onApply }: TicketFiltersProps) {
   const [draft, setDraft] = useState<Record<string, string>>({});
 
   function apply(field: string, value: string) {
+    if (
+      field === "basePrice" &&
+      value.trim() &&
+      !Number.isFinite(parsePrice(value.trim()))
+    )
+      return;
     const next = { ...request, page: 1 };
     const trimmed = value.trim();
     if (!trimmed) {
@@ -32,7 +39,9 @@ export function TicketFilters({ request, onApply }: TicketFiltersProps) {
       const column = columns.find((item) => item.field === field);
       const parsed =
         column?.input === "number"
-          ? Number(trimmed)
+          ? field === "basePrice"
+            ? parsePrice(trimmed)
+            : Number(trimmed)
           : field === "refundable"
             ? trimmed === "true"
             : trimmed;
@@ -98,7 +107,9 @@ export function TicketFilters({ request, onApply }: TicketFiltersProps) {
             ) : (
               <input
                 aria-label={`Filter ${column.label}`}
-                type={column.input}
+                type={column.field === "basePrice" ? "text" : column.input}
+                inputMode={column.field === "basePrice" ? "decimal" : undefined}
+                maxLength={column.field === "basePrice" ? 13 : undefined}
                 placeholder={
                   column.field === "venueId" ? "Venue ID" : "Search…"
                 }
@@ -111,12 +122,17 @@ export function TicketFilters({ request, onApply }: TicketFiltersProps) {
                       : undefined
                 }
                 value={value}
-                onChange={(event) =>
-                  setDraft((current) => ({
-                    ...current,
-                    [column.field]: event.target.value,
-                  }))
-                }
+                onChange={(event) => {
+                  if (
+                    column.field !== "basePrice" ||
+                    isPriceInput(event.target.value)
+                  ) {
+                    setDraft((current) => ({
+                      ...current,
+                      [column.field]: event.target.value,
+                    }));
+                  }
+                }}
                 onBlur={(event) => {
                   if (event.target.validity.valid)
                     apply(column.field, event.target.value);
