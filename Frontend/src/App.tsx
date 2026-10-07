@@ -1,3 +1,4 @@
+import { PassengerPicker } from "./components/PassengerPicker";
 import "./App.css";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -775,7 +776,7 @@ function App() {
               <span>Current price: {dialog.ticket.basePrice ?? "—"}</span>
             </div>
 
-            <label className="form-field">
+            <div className="form-field">
               <span>Passenger</span>
 
               {passengers.length === 0 ? (
@@ -795,26 +796,13 @@ function App() {
                   </button>
                 </div>
               ) : (
-                <select
+                <PassengerPicker
+                  passengers={passengers}
                   value={passengerId}
-
-                  onChange={(event) => setPassengerId(event.target.value)}
-                >
-                  {passengers.map((passenger) => (
-                    <option
-                      key={passenger.id}
-
-                      value={passenger.id}
-                    >
-                      {passenger.firstName} {passenger.lastName}
-                      {" — "}
-                      {passenger.documentSeriesNumber}{" "}
-                      {passenger.documentNumber}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setPassengerId}
+                />
               )}
-            </label>
+            </div>
 
             {dialog.mode === "discount" && (
               <label className="form-field">

@@ -103,8 +103,19 @@ export function PassengersPage({
     setFormError(null);
   }
 
+  const nameFields = [
+    { label: "First name", value: firstName },
+    { label: "Middle name", value: middleName },
+    { label: "Last name", value: lastName },
+  ];
+  const nameLengthError = nameFields.find((field) => field.value.length > 255);
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (nameLengthError) {
+      setFormError(`${nameLengthError.label}: maximum 255 characters`);
+      return;
+    }
 
     if (
       !firstName.trim() ||
@@ -392,22 +403,50 @@ export function PassengersPage({
                 <span>First name *</span>
 
                 <input
-                  maxLength={255}
+                  aria-invalid={firstName.length > 255}
+                  aria-describedby="firstName-length"
                   value={firstName}
 
                   onChange={(event) => setFirstName(event.target.value)}
                 />
+                <small
+                  id="firstName-length"
+                  className={
+                    firstName.length > 255
+                      ? "field-validation-error"
+                      : undefined
+                  }
+                  aria-live="polite"
+                >
+                  {firstName.length} / 255
+                  {firstName.length > 255
+                    ? " — maximum 255 characters"
+                    : " characters"}
+                </small>
               </label>
 
               <label className="form-field">
                 <span>Last name *</span>
 
                 <input
-                  maxLength={255}
+                  aria-invalid={lastName.length > 255}
+                  aria-describedby="lastName-length"
                   value={lastName}
 
                   onChange={(event) => setLastName(event.target.value)}
                 />
+                <small
+                  id="lastName-length"
+                  className={
+                    lastName.length > 255 ? "field-validation-error" : undefined
+                  }
+                  aria-live="polite"
+                >
+                  {lastName.length} / 255
+                  {lastName.length > 255
+                    ? " — maximum 255 characters"
+                    : " characters"}
+                </small>
               </label>
             </div>
 
@@ -415,11 +454,24 @@ export function PassengersPage({
               <span>Middle name</span>
 
               <input
-                maxLength={255}
+                aria-invalid={middleName.length > 255}
+                aria-describedby="middleName-length"
                 value={middleName}
 
                 onChange={(event) => setMiddleName(event.target.value)}
               />
+              <small
+                id="middleName-length"
+                className={
+                  middleName.length > 255 ? "field-validation-error" : undefined
+                }
+                aria-live="polite"
+              >
+                {middleName.length} / 255
+                {middleName.length > 255
+                  ? " — maximum 255 characters"
+                  : " characters"}
+              </small>
             </label>
 
             <label className="form-field">
