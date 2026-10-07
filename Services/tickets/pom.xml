@@ -15,7 +15,6 @@
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jakarta.ee.version>10.0.0</jakarta.ee.version>
-        <hikari.version>6.3.1</hikari.version>
         <postgresql.version>42.7.7</postgresql.version>
         <kafka.clients.version>4.1.0</kafka.clients.version>
         <junit.version>5.12.2</junit.version>
@@ -31,15 +30,10 @@
         </dependency>
 
         <dependency>
-            <groupId>com.zaxxer</groupId>
-            <artifactId>HikariCP</artifactId>
-            <version>${hikari.version}</version>
-        </dependency>
-
-        <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <version>${postgresql.version}</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>

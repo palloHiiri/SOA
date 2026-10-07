@@ -9,18 +9,21 @@ public class VenueCreateRequest {
     @NotBlank
     @Size(max = 255)
     private String name;
-    @NotNull
-    @Positive
-    private Integer trainSetId;
+
+    @NotNull @Positive private Integer trainSetId;
+
     public String getName() {
         return name;
     }
+
     public void setName(String name) {
         this.name = name;
     }
+
     public Integer getTrainSetId() {
         return trainSetId;
     }
+
     public void setTrainSetId(Integer trainSetId) {
         this.trainSetId = trainSetId;
     }

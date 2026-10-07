@@ -1,16 +1,20 @@
 package com.fuzis.booking.config;
 
 import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.support.JdbcTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import javax.sql.DataSource;
 
 @Configuration
+@EnableTransactionManagement
 public class DatabaseConfig {
 
     private static final Logger log = LoggerFactory.getLogger(DatabaseConfig.class);
@@ -18,9 +22,7 @@ public class DatabaseConfig {
     @Bean
     public DataSource dataSource() {
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(
-            "jdbc:postgresql://postgres:5432/booking"
-        );
+        config.setJdbcUrl("jdbc:postgresql://postgres:5432/booking");
 
         config.setDriverClassName("org.postgresql.Driver");
         config.setUsername("postgres");
@@ -28,10 +30,20 @@ public class DatabaseConfig {
 
         config.setMaximumPoolSize(5);
 
-        log.info("Initializing booking PostgreSQL datasource: url={}, maxPoolSize={}",
-                config.getJdbcUrl(), config.getMaximumPoolSize());
+        log.info(
+                "Initializing booking PostgreSQL datasource: url={}, maxPoolSize={}",
+                config.getJdbcUrl(),
+                config.getMaximumPoolSize());
 
         return new HikariDataSource(config);
+    }
+
+    @Bean
+    public JdbcTransactionManager transactionManager(DataSource dataSource) {
+        JdbcTransactionManager manager = new JdbcTransactionManager(dataSource);
+        manager.setRollbackOnCommitFailure(true);
+        manager.setEnforceReadOnly(true);
+        return manager;
     }
 
     @Bean

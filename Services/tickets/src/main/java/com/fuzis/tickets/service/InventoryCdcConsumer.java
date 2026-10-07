@@ -2,6 +2,7 @@ package com.fuzis.tickets.service;
 
 import com.fuzis.tickets.config.KafkaConfig;
 import com.fuzis.tickets.repository.CdcRepository;
+
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Resource;
@@ -14,10 +15,13 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonReader;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.errors.WakeupException;
 
 import java.io.StringReader;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.Future;
@@ -30,11 +34,9 @@ public class InventoryCdcConsumer {
 
     private static final Logger LOG = Logger.getLogger(InventoryCdcConsumer.class.getName());
 
-    @Inject
-    private KafkaConfig kafkaConfig;
+    @Inject private KafkaConfig kafkaConfig;
 
-    @Inject
-    private CdcRepository cdcRepository;
+    @Inject private CdcRepository cdcRepository;
 
     @Resource(lookup = "java:comp/DefaultManagedExecutorService")
     private ManagedExecutorService executor;
@@ -66,7 +68,7 @@ public class InventoryCdcConsumer {
 
     private void consumeLoop() {
         try (KafkaConsumer<String, String> kafka =
-        new KafkaConsumer<>(kafkaConfig.consumerProperties())) {
+                new KafkaConsumer<>(kafkaConfig.consumerProperties())) {
             consumer = kafka;
             kafka.subscribe(List.of(kafkaConfig.topic()));
 
@@ -74,47 +76,42 @@ public class InventoryCdcConsumer {
 
             while (running) {
                 try {
-                    for (ConsumerRecord<String, String> record :
-                    kafka.poll(Duration.ofMillis(kafkaConfig.pollTimeoutMs()))) {
-
-                        if (record.value() == null) {
-
-                            kafka.commitSync();
-                            continue;
+                    var records = kafka.poll(Duration.ofMillis(kafkaConfig.pollTimeoutMs()));
+                    try {
+                        for (ConsumerRecord<String, String> record : records) {
+                            if (record.value() != null) process(record.value());
                         }
+                        if (!records.isEmpty()) kafka.commitSync();
+                    } catch (Exception failure) {
 
-                        process(record.value());
-
-                        kafka.commitSync();
+                        for (var partition : records.partitions()) {
+                            kafka.seek(partition, records.records(partition).getFirst().offset());
+                        }
+                        throw failure;
                     }
-                }
-                catch (org.apache.kafka.common.errors.WakeupException e) {
+                } catch (WakeupException e) {
                     if (running) {
                         throw e;
                     }
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     LOG.log(
-                    Level.SEVERE,
-                    "Failed to process Inventory CDC record; offset will be retried",
-                    e);
+                            Level.SEVERE,
+                            "Failed to process Inventory CDC record; offset will be retried",
+                            e);
 
                     try {
                         Thread.sleep(1000L);
-                    }
-                    catch (InterruptedException interrupted) {
+                    } catch (InterruptedException interrupted) {
                         Thread.currentThread().interrupt();
                         break;
                     }
                 }
             }
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             if (running) {
                 LOG.log(Level.SEVERE, "Inventory CDC consumer stopped unexpectedly", e);
             }
-        }
-        finally {
+        } finally {
             consumer = null;
         }
     }
@@ -135,9 +132,10 @@ public class InventoryCdcConsumer {
             throw new IllegalArgumentException("Inventory CDC record has no data field");
         }
 
-        String data = dataValue.getValueType() == JsonValue.ValueType.STRING
-        ? ((JsonString) dataValue).getString()
-        : dataValue.toString();
+        String data =
+                dataValue.getValueType() == JsonValue.ValueType.STRING
+                        ? ((JsonString) dataValue).getString()
+                        : dataValue.toString();
 
         JsonObject dataJson = object(data);
         JsonValue dataObject = dataJson.get("id");
@@ -159,7 +157,7 @@ public class InventoryCdcConsumer {
         }
     }
 
-    private static java.math.BigDecimal numberOrString(JsonObject object, String field) {
+    private static BigDecimal numberOrString(JsonObject object, String field) {
         JsonValue value = object.get(field);
 
         if (value == null || value.getValueType() == JsonValue.ValueType.NULL) {
@@ -171,7 +169,7 @@ public class InventoryCdcConsumer {
         }
 
         if (value.getValueType() == JsonValue.ValueType.STRING) {
-            return new java.math.BigDecimal(object.getString(field));
+            return new BigDecimal(object.getString(field));
         }
 
         throw new IllegalArgumentException("Invalid field: " + field);

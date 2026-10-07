@@ -1,8 +1,10 @@
 package com.fuzis.booking.exception;
 
 import com.fuzis.booking.dto.ErrorResponse;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.ConcurrencyFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -21,52 +23,69 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(TicketAlreadyBookedException.class)
-    public ResponseEntity<ErrorResponse> handleTicketAlreadyBookedException(TicketAlreadyBookedException ex) {
+    public ResponseEntity<ErrorResponse> handleTicketAlreadyBookedException(
+            TicketAlreadyBookedException ex) {
         log.warn("Ticket already booked: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse("TICKET_ALREADY_BOOKED", ex.getMessage()));
     }
 
     @ExceptionHandler(NoAvailableSeatException.class)
-    public ResponseEntity<ErrorResponse> handleNoAvailableSeatException(NoAvailableSeatException exception) {
+    public ResponseEntity<ErrorResponse> handleNoAvailableSeatException(
+            NoAvailableSeatException exception) {
         log.warn("No available seat: {}", exception.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse("NO_AVAILABLE_SEAT", exception.getMessage()));
     }
 
     @ExceptionHandler(InvalidDiscountException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidDiscountException(InvalidDiscountException exception) {
+    public ResponseEntity<ErrorResponse> handleInvalidDiscountException(
+            InvalidDiscountException exception) {
         log.warn("Invalid discount: {}", exception.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse("INVALID_DISCOUNT", exception.getMessage()));
     }
 
     @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<ErrorResponse> handleUnauthorizedException(UnauthorizedException exception) {
+    public ResponseEntity<ErrorResponse> handleUnauthorizedException(
+            UnauthorizedException exception) {
         log.warn("Unauthorized request: {}", exception.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ErrorResponse("UNAUTHORIZED", exception.getMessage()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException exception) {
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(
+            AccessDeniedException exception) {
         log.warn("Access denied: {}", exception.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ErrorResponse("ACCESS_DENIED", exception.getMessage()));
     }
 
     @ExceptionHandler(PassengerNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handlePassengerNotFoundException(PassengerNotFoundException exception) {
+    public ResponseEntity<ErrorResponse> handlePassengerNotFoundException(
+            PassengerNotFoundException exception) {
         log.warn("Passenger not found: {}", exception.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse("PASSENGER_NOT_FOUND", exception.getMessage()));
     }
 
     @ExceptionHandler(TicketWithoutPriceException.class)
-    public ResponseEntity<ErrorResponse> handleTicketWithoutPriceException(TicketWithoutPriceException exception) {
+    public ResponseEntity<ErrorResponse> handleTicketWithoutPriceException(
+            TicketWithoutPriceException exception) {
         log.warn("Ticket has no price: {}", exception.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse("TICKET_WITHOUT_PRICE", exception.getMessage()));
+    }
+
+    @ExceptionHandler({ConcurrencyFailureException.class, TicketCreationConflictException.class})
+    public ResponseEntity<ErrorResponse> handleConcurrentModification(RuntimeException exception) {
+        log.warn("Concurrent booking modification: {}", exception.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(
+                        new ErrorResponse(
+                                "CONCURRENT_MODIFICATION",
+                                "Concurrent modification; retry the request"));
     }
 
     @ExceptionHandler(Exception.class)

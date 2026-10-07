@@ -8,13 +8,12 @@ import java.util.List;
 import java.util.Map;
 
 public final class SortParser {
-    private SortParser() {
-    }
+    private SortParser() {}
 
-    public record SortPart(String expression, String direction) {
-    }
+    public record SortPart(String expression, String direction) {}
 
-    public static List<SortPart> parse(List<String> raw, Map<String, String> allowed, String defaultField) {
+    public static List<SortPart> parse(
+            List<String> raw, Map<String, String> allowed, String defaultField) {
         List<String> values = raw == null ? List.of() : raw;
         if (values.isEmpty()) {
             return List.of(new SortPart(allowed.get(defaultField), "ASC"));

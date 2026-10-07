@@ -12,202 +12,109 @@ import com.fuzis.tickets.repository.VenueRepository.VenueRecord;
 import com.fuzis.tickets.util.Pagination;
 import com.fuzis.tickets.util.SortParser;
 import com.fuzis.tickets.util.Sorts;
+
 import jakarta.enterprise.context.Dependent;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.List;
 
 @Dependent
+@Transactional
 public class VenueService {
 
-    private final DataSource dataSource;
     private final VenueRepository venueRepository;
     private final TicketRepository ticketRepository;
     private final CdcRepository cdcRepository;
 
     @Inject
     public VenueService(
-    DataSource dataSource,
-    VenueRepository venueRepository,
-    TicketRepository ticketRepository,
-    CdcRepository cdcRepository) {
-        this.dataSource = dataSource;
+            VenueRepository venueRepository,
+            TicketRepository ticketRepository,
+            CdcRepository cdcRepository) {
         this.venueRepository = venueRepository;
         this.ticketRepository = ticketRepository;
         this.cdcRepository = cdcRepository;
     }
 
     public PageResponse<VenueResponse> list(
-    int page,
-    int size,
-    List<String> sort,
-    Long id,
-    String name,
-    Integer trainSetId) {
+            int page, int size, List<String> sort, Long id, String name, Integer trainSetId) {
 
         Pagination pagination = Pagination.of(page, size, maxSize());
         var sorts = SortParser.parse(sort, Sorts.VENUES, "id");
 
-        try {
-            long total = venueRepository.count(name, trainSetId, id);
-            List<VenueResponse> content = venueRepository.findPage(
-            page,
-            size,
-            pagination.offset(),
-            name,
-            trainSetId,
-            id,
-            sorts);
+        long total = venueRepository.count(name, trainSetId, id);
+        List<VenueResponse> content =
+                venueRepository.findPage(
+                        page, size, pagination.offset(), name, trainSetId, id, sorts);
 
-            return new PageResponse<>(content, page, size, total);
-        }
-        catch (SQLException e) {
-            throw databaseError(e);
-        }
+        return new PageResponse<>(content, page, size, total);
     }
 
     public VenueResponse get(long id) {
         validate(id);
 
-        try {
-            VenueRecord record = venueRepository.findById(id);
-            if (record == null) {
-                throw ApiException.notFound("Venue " + id + " not found");
-            }
-            return response(record);
+        VenueRecord record = venueRepository.findById(id);
+        if (record == null) {
+            throw ApiException.notFound("Venue " + id + " not found");
         }
-        catch (SQLException e) {
-            throw databaseError(e);
-        }
+        return response(record);
     }
 
     public VenueResponse create(VenueCreateRequest request) {
-        try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(false);
 
-            try {
-                if (cdcRepository.findLatest(connection, request.getTrainSetId()).isEmpty()) {
-                    throw ApiException.notFound(
+        if (cdcRepository.findLatest(request.getTrainSetId()).isEmpty()) {
+            throw ApiException.notFound(
                     "Inventory snapshot for train set "
-                    + request.getTrainSetId()
-                    + " is not available");
-                }
-
-                long id = venueRepository.insert(
-                connection,
-                request.getName().trim(),
-                request.getTrainSetId());
-
-                VenueRecord record = venueRepository.findById(connection, id, false);
-                connection.commit();
-                return response(record);
-            }
-            catch (SQLException e) {
-                rollbackQuietly(connection);
-                throw databaseError(e);
-            }
-            catch (RuntimeException e) {
-                rollbackQuietly(connection);
-                throw e;
-            }
-            finally {
-                restoreAutoCommit(connection);
-            }
+                            + request.getTrainSetId()
+                            + " is not available");
         }
-        catch (SQLException e) {
-            throw databaseError(e);
-        }
+
+        long id = venueRepository.insert(request.getName().trim(), request.getTrainSetId());
+
+        VenueRecord record = venueRepository.findById(id, false);
+        return response(record);
     }
 
     public VenueResponse update(long id, VenueUpdateRequest request) {
         validate(id);
 
-        try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(false);
+        VenueRecord current = venueRepository.findForUpdate(id);
+        if (current == null) {
+            throw ApiException.notFound("Venue " + id + " not found");
+        }
 
-            try {
-                VenueRecord current = venueRepository.findForUpdate(connection, id);
-                if (current == null) {
-                    throw ApiException.notFound("Venue " + id + " not found");
-                }
-
-                if (cdcRepository.findLatest(connection, request.getTrainSetId()).isEmpty()) {
-                    throw ApiException.notFound(
+        if (cdcRepository.findLatest(request.getTrainSetId()).isEmpty()) {
+            throw ApiException.notFound(
                     "Inventory snapshot for train set "
-                    + request.getTrainSetId()
-                    + " is not available");
-                }
-
-                if (current.trainSetId() != request.getTrainSetId()
-                && ticketRepository.countByVenue(connection, id) > 0) {
-                    throw ApiException.conflict(
-                    "Venue trainSetId cannot be changed while tickets exist");
-                }
-
-                venueRepository.update(
-                connection,
-                id,
-                request.getName().trim(),
-                request.getTrainSetId());
-
-                VenueRecord record = venueRepository.findById(connection, id, false);
-                connection.commit();
-                return response(record);
-            }
-            catch (SQLException e) {
-                rollbackQuietly(connection);
-                throw databaseError(e);
-            }
-            catch (RuntimeException e) {
-                rollbackQuietly(connection);
-                throw e;
-            }
-            finally {
-                restoreAutoCommit(connection);
-            }
+                            + request.getTrainSetId()
+                            + " is not available");
         }
-        catch (SQLException e) {
-            throw databaseError(e);
+
+        if (current.trainSetId() != request.getTrainSetId()
+                && ticketRepository.countByVenue(id) > 0) {
+            throw ApiException.conflict("Venue trainSetId cannot be changed while tickets exist");
         }
+
+        venueRepository.update(id, request.getName().trim(), request.getTrainSetId());
+
+        VenueRecord record = venueRepository.findById(id, false);
+        return response(record);
     }
 
     public void delete(long id) {
         validate(id);
 
-        try (Connection connection = dataSource.getConnection()) {
-            connection.setAutoCommit(false);
-
-            try {
-                VenueRecord current = venueRepository.findForUpdate(connection, id);
-                if (current == null) {
-                    throw ApiException.notFound("Venue " + id + " not found");
-                }
-
-                if (ticketRepository.countByVenue(connection, id) > 0) {
-                    throw ApiException.conflict("Venue has tickets and cannot be deleted");
-                }
-
-                venueRepository.delete(connection, id);
-                connection.commit();
-            }
-            catch (SQLException e) {
-                rollbackQuietly(connection);
-                throw databaseError(e);
-            }
-            catch (RuntimeException e) {
-                rollbackQuietly(connection);
-                throw e;
-            }
-            finally {
-                restoreAutoCommit(connection);
-            }
+        VenueRecord current = venueRepository.findForUpdate(id);
+        if (current == null) {
+            throw ApiException.notFound("Venue " + id + " not found");
         }
-        catch (SQLException e) {
-            throw databaseError(e);
+
+        if (ticketRepository.countByVenue(id) > 0) {
+            throw ApiException.conflict("Venue has tickets and cannot be deleted");
         }
+
+        venueRepository.delete(id);
     }
 
     private static VenueResponse response(VenueRecord record) {
@@ -228,34 +135,8 @@ public class VenueService {
         try {
             String value = System.getenv("TICKETS_MAX_PAGE_SIZE");
             return value == null || value.isBlank() ? 100 : Integer.parseInt(value);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return 100;
-        }
-    }
-
-    private static ApiException databaseError(SQLException e) {
-        if ("23505".equals(e.getSQLState())) {
-            return ApiException.conflict("A Venue with the same name already exists");
-        }
-        return ApiException.internal("Database operation failed");
-    }
-
-    private static void rollbackQuietly(Connection connection) {
-        try {
-            connection.rollback();
-        }
-        catch (SQLException ignored) {
-
-        }
-    }
-
-    private static void restoreAutoCommit(Connection connection) {
-        try {
-            connection.setAutoCommit(true);
-        }
-        catch (SQLException ignored) {
-
         }
     }
 }

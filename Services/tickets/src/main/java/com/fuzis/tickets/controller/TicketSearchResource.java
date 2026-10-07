@@ -4,7 +4,7 @@ import com.fuzis.tickets.dto.PageResponse;
 import com.fuzis.tickets.dto.TicketResponse;
 import com.fuzis.tickets.dto.TicketSearchRequest;
 import com.fuzis.tickets.service.TicketService;
-import lombok.NoArgsConstructor;
+
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
@@ -12,6 +12,8 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+
+import lombok.NoArgsConstructor;
 
 @NoArgsConstructor(force = true)
 @Path("/search")

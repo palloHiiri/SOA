@@ -5,7 +5,6 @@ import com.fuzis.tickets.dto.VenueCreateRequest;
 import com.fuzis.tickets.dto.VenueResponse;
 import com.fuzis.tickets.dto.VenueUpdateRequest;
 import com.fuzis.tickets.service.VenueService;
-import lombok.NoArgsConstructor;
 
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
@@ -24,6 +23,8 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 
+import lombok.NoArgsConstructor;
+
 import java.net.URI;
 import java.util.List;
 
@@ -33,6 +34,7 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON)
 public class VenueResource {
     private final VenueService service;
+
     @Inject
     public VenueResource(VenueService service) {
         this.service = service;
@@ -40,13 +42,12 @@ public class VenueResource {
 
     @GET
     public PageResponse<VenueResponse> list(
-    @DefaultValue("1")@QueryParam("page") int page,
-    @DefaultValue("20")@QueryParam("size") int size,
-    @QueryParam("sort") List<String>sort,
-    @QueryParam("id") Long id,
-    @QueryParam("name") String name,
-    @QueryParam("trainSetId") Integer trainSetId
-    ) {
+            @DefaultValue("1") @QueryParam("page") int page,
+            @DefaultValue("20") @QueryParam("size") int size,
+            @QueryParam("sort") List<String> sort,
+            @QueryParam("id") Long id,
+            @QueryParam("name") String name,
+            @QueryParam("trainSetId") Integer trainSetId) {
         return service.list(page, size, sort, id, name, trainSetId);
     }
 
@@ -56,16 +57,19 @@ public class VenueResource {
         URI location = uriInfo.getAbsolutePathBuilder().path(Long.toString(v.getId())).build();
         return Response.created(location).entity(v).build();
     }
+
     @GET
     @Path("{id}")
     public VenueResponse get(@PathParam("id") long id) {
         return service.get(id);
     }
+
     @PUT
     @Path("{id}")
     public VenueResponse update(@PathParam("id") long id, @Valid VenueUpdateRequest request) {
         return service.update(id, request);
     }
+
     @DELETE
     @Path("{id}")
     public Response delete(@PathParam("id") long id) {
